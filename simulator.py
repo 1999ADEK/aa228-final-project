@@ -34,6 +34,11 @@ class Player(object):
 
     def update_state(self, state, action):
         # =========== TODO =========== #
+        # - Each state is represented as a tuple (position, speed),
+        #   which refers to the status of the ball.
+        #   (speed == 0) means the player misses the ball or the ball goes
+        #   outside the court. In this case, the opponent get one point.
+        # - Each action is represented as a tuple (stroke, shot). 
         position, speed = state
         stroke, shot = action
         return (random.choice(POSITIONS), random.choice(SPEED))
@@ -43,6 +48,7 @@ class Player(object):
         # =========== TODO =========== #
         return (random.choice(STROKE_TYPES), random.choice(BALL_HIT_TYPES))
         # =========== TODO =========== #
+
 
 class TennisSimulator(object):
     def __init__(self):
@@ -54,7 +60,7 @@ class TennisSimulator(object):
             "stroke": [],
             "ball_hit": [],
         }
-        self.score_board = [[] for i in range(2)]
+        self.score_board = [[] for _ in range(2)]
 
     def update_history(self, player_id, state, action):
         self.history["player"].append(player_id)
@@ -87,6 +93,7 @@ class TennisSimulator(object):
             )
 
         player_id = serve_id
+        # Simulate untill the ball dies
         while state[1] != 0:
             player_id = 1 - player_id
             action = self.players[player_id].choose_action()
@@ -166,12 +173,15 @@ class TennisSimulator(object):
         df_history = pd.DataFrame(self.history)
         df_history.to_csv(filename)
 
+
 if __name__ == "__main__":
     simulator = TennisSimulator()
     winner, scores = simulator.simulate_match()
+
     print(f"Player {winner} won the match!")
     print(f"===== Score Board =====")
     print(*simulator.score_board[0], sep=' | ')
     print(*simulator.score_board[1], sep=' | ')
     print(f"=======================")
-    simulator.export_history("/content/tmp.csv")
+    
+    simulator.export_history("tmp.csv")
