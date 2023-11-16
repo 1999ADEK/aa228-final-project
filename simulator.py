@@ -1,4 +1,5 @@
 import random
+from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -74,20 +75,38 @@ action_probs = {
 
 action_sets = list(action_probs.keys())
 
+
 class Player(object):
+    """A class used to represent a tennis player."""
+
     def __init__(self):
         self.speed_lookup_table = speed_lookup_table
         self.position_lookup_table = position_lookup_table
         self.action_probs = action_probs
         self.action_success_rate = action_success_rate
 
-    def update_state(self, state, action):
-        """
-        - Each state is represented as a tuple (position, speed),
-            which refers to the status of the ball.
+    def update_state(
+        self,
+        state: Tuple[str, float],
+        action: Tuple[str, str],
+    ) -> Tuple[str, float]:
+        """Updates the state based on current state and action.
+
+        Parameters
+        ----------
+        state: Tuple[str, float]
+            The state of the tennis ball as a tuple (position, speed).
             (speed == 0) means the player misses the ball or the ball goes
             outside the court. In this case, the opponent get one point.
-        - Each action is represented as a tuple (stroke, shot).
+        action: Tuple[str, str]
+            The action the player takes as a tuple (stroke, ball_hit_type).
+
+        Returns
+        -------
+        next_position: str
+            The position of the ball in the next time frame.
+        next_speed: float
+            The speed of the ball in the next time frame.
         """
 
         # Unpack current state and action
@@ -103,14 +122,28 @@ class Player(object):
             next_speed = np.random.normal(mean, std)
         
         # Determine the position of the next state
-        next_state = np.random.choice(
+        next_position = np.random.choice(
             POSITIONS,
             p=list(self.position_lookup_table[position].values())
         )
 
-        return (next_state, next_speed)
+        return (next_position, next_speed)
 
-    def choose_action(self, state=None):
+    def choose_action(
+        self, state: Optional[Tuple[str, float]] = None
+    ) -> Tuple[str, str]:
+        """Chooses an action for the player.
+
+        Parameters
+        ----------
+        state: Tuple[str, float]
+            The state of the tennis ball as a tuple (position, speed).
+
+        Returns
+        -------
+        action: Tuple[str, str]
+            The action the player takes as a tuple (stroke, ball_hit_type).
+        """
         action_idx = np.random.choice(
             len(action_sets),
             p=list(self.action_probs.values())
@@ -119,6 +152,8 @@ class Player(object):
 
 
 class TennisSimulator(object):
+    """A class that simulates a tennis match."""
+
     def __init__(self):
         self.players = [Player() for _ in range(2)]
         self.history = {
@@ -130,14 +165,51 @@ class TennisSimulator(object):
         }
         self.score_board = [[] for _ in range(2)]
 
-    def update_history(self, player_id, state, action):
+    def update_history(
+        self,
+        player_id: int,
+        state: Tuple[str, float],
+        action: Tuple[str, str],
+    ) -> None:
+        """Updates the log.
+
+        Parameters
+        ----------
+        player_id: int
+            The id of the player. Should be either 0 or 1.
+        state: Tuple[str, float]
+            The state of the tennis ball as a tuple (position, speed).
+        action: Tuple[str, str]
+            The action the player takes as a tuple (stroke, ball_hit_type).
+        """
+
         self.history["player"].append(player_id)
         self.history["position"].append(state[0])
         self.history["speed"].append(state[1])
         self.history["stroke"].append(action[0])
         self.history["ball_hit"].append(action[1])
 
-    def simulate_point(self, serve_id, serve_position):
+    def simulate_point(
+        self,
+        serve_id: int,
+        serve_position: str,
+    ) -> int:
+        """Simulates a point.
+
+        Parameters
+        ----------
+        serve_id: int
+            The id of the server. Should be either 0 or 1.
+        serve_position: str
+            The position at which the server serves the ball.
+            Should be "BR" or "BL".
+
+        Returns
+        -------
+        winner_id: int
+            The winner of the point.
+        """
+
         # First serve
         state = self.players[serve_id].update_state(
             (serve_position, 0),
@@ -161,7 +233,7 @@ class TennisSimulator(object):
             )
 
         player_id = serve_id
-        # Simulate untill the ball dies
+        # Simulate until the ball dies
         while state[1] != 0:
             player_id = 1 - player_id
             action = self.players[player_id].choose_action()
@@ -170,7 +242,22 @@ class TennisSimulator(object):
 
         return 1 - player_id
 
-    def simulate_game(self, serve_id):
+    def simulate_game(self, serve_id: int) -> Tuple[int, Tuple[int, int]]:
+        """Simulates a game.
+
+        Parameters
+        ----------
+        serve_id: int
+            The id of the server. Should be either 0 or 1.
+
+        Returns
+        -------
+        winner_id: int
+            The winner of the game.
+        scores: Tuple[int, int]
+            How many points each player wins in the game.
+        """
+
         scores = [0, 0]
         # Player who wins 4 points and has 2-point lead wins the game
         while max(scores) < 4 or abs(scores[0] - scores[1]) < 2:
@@ -184,7 +271,22 @@ class TennisSimulator(object):
         winner_id = 0 if scores[0] > scores[1] else 1
         return winner_id, scores  
 
-    def simulate_tiebreak(self, serve_id):
+    def simulate_tiebreak(self, serve_id: int) -> Tuple[int, Tuple[int, int]]:
+        """Simulates a tiebreak.
+
+        Parameters
+        ----------
+        serve_id: int
+            The id of the server. Should be either 0 or 1.
+
+        Returns
+        -------
+        winner_id: int
+            The winner of the tiebreak.
+        scores: Tuple[int, int]
+            How many points each player wins in the tiebreak.
+        """
+
         scores = [0, 0]
         # Player who wins 7 points and has 2-point lead wins the tiebreak
         while max(scores) < 7 or abs(scores[0] - scores[1]) < 2:
@@ -201,7 +303,21 @@ class TennisSimulator(object):
         winner_id = 0 if scores[0] > scores[1] else 1
         return winner_id, scores
 
-    def simulate_set(self, serve_id):
+    def simulate_set(self, serve_id: int) -> Tuple[int, Tuple[int, int]]:
+        """Simulates a set.
+
+        Parameters
+        ----------
+        serve_id: int
+            The id of the server. Should be either 0 or 1.
+
+        Returns
+        -------
+        winner_id: int
+            The winner of the set.
+        scores: Tuple[int, int]
+            How many games each player wins in the set.
+        """
         scores = [0, 0]
         # Player who wins 6 games wins the set
         while max(scores) < 6 or sum(scores) == 11:
@@ -221,7 +337,16 @@ class TennisSimulator(object):
         winner_id = 0 if scores[0] > scores[1] else 1
         return winner_id, scores
 
-    def simulate_match(self):
+    def simulate_match(self) -> Tuple[int, Tuple[int, int]]:
+        """Simulates a match.
+
+        Returns
+        -------
+        winner_id: int
+            The winner of the match.
+        scores: Tuple[int, int]
+            How many sets each player wins in the match.
+        """
         scores = [0, 0]
         serve_id = 0
         # Player who wins two sets wins the match
@@ -237,7 +362,14 @@ class TennisSimulator(object):
         winner_id = 0 if scores[0] > scores[1] else 1
         return winner_id, scores
 
-    def export_history(self, filename="history.csv"):
+    def export_history(self, filename: str = "history.csv") -> None:
+        """Exports the log as a CSV file.
+
+        Parameters
+        ----------
+        filename: str
+            The filename of the exported log.
+        """
         df_history = pd.DataFrame(self.history)
         df_history.to_csv(filename)
 
