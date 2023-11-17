@@ -1,25 +1,10 @@
-import random
-from typing import List, NamedTuple, Optional, Tuple
+from typing import Tuple
 
-import numpy as np
 import pandas as pd
 
-HIT_TYPES = [
-    "forehand_slice",
-    "forehand_topspin",
-    "forehand_return",
-    "backhand_slice",
-    "backhand_topspin",
-    "backhand_return",
-    "backhand_volley",
-]
+from utils import Action, State
+from players import DefaultPlayer
 
-POSITIONS = [
-    "TL",
-    "TR",
-    "BL",
-    "BR",
-]
 
 speed_lookup_table = {
     "forehand_serve":   (30.87, 3.85),
@@ -32,6 +17,7 @@ speed_lookup_table = {
     "backhand_volley":  (6.88,  1.60),
 }
 
+
 position_lookup_table = {
     "TL": {"TL": 0.93, "TR": 0.03, "BL": 0.03, "BR": 0.01},
     "TR": {"TL": 0.03, "TR": 0.93, "BL": 0.01, "BR": 0.03},
@@ -40,130 +26,18 @@ position_lookup_table = {
 }
 
 
-
-class State(NamedTuple):
-    """A class used to represent a state of the tennis court.
-
-    player_positions: List[str]
-        The positions of the two players at the current timestep.
-    ball_position: str
-        The position of the tennis ball.
-    is_serve: bool
-        Whether the ball is a serve. Defaults to False.
-    """
-    player_positions: List[str]
-    ball_position: str
-    is_serve: bool = False
-
-class Action(NamedTuple):
-    """A class used to represent an action.
-    
-    hit_type: str
-        How the player hits the ball.
-    player_movement:
-        The destination the player attempts to go to.
-    """
-    hit_type: str
-    player_movement: str
-
-
-class Player(object):
-    """A class used to represent a tennis player."""
-
-    def __init__(self, player_id):
-        self.player_id = player_id
-        self.speed_lookup_table = speed_lookup_table
-        self.position_lookup_table = position_lookup_table
-        self.first_serve_success_rate = 0.5
-        self.second_serve_success_rate = 0.8
-
-    def check_serve_success(self, is_first_serve: bool = True) -> bool:
-        """Determine if a serve is successful.
-
-        Parameters
-        ----------
-        is_first_serve: bool
-            Whether this is the first or second serve.
-        """
-        if is_first_serve:
-            success_rate = self.first_serve_success_rate
-        else:
-            success_rate = self.second_serve_success_rate
-        return np.random.uniform() < success_rate
-
-    def update_state(
-        self,
-        current_state: State,
-        action: Action,
-    ) -> State:
-        """Updates the state based on current state and action.
-
-        Parameters
-        ----------
-        current_state: State
-            The current state of the tennis court.
-        action: Action
-            The action the player takes.
-
-        Returns
-        -------
-        next_state: State
-            The next state of the tennis court.
-        """
-        player_positions = current_state.player_positions
-        player_movement = action.player_movement
-        # Stochastic outcome of player_movement
-        player_positions[self.player_id] = np.random.choice(
-            POSITIONS,
-            p=list(self.position_lookup_table[player_movement].values())
-        )
-
-        # TODO(@rqwang): Determine ball_position based on the existing dataset.
-        ball_position = np.random.choice(POSITIONS)
-
-        next_state = State(
-            player_positions=player_positions,
-            ball_position=ball_position,
-        )
-        return next_state
-
-    def choose_action(
-        self, state: State
-    ) -> Action:
-        """Chooses an action for the player.
-
-        Parameters
-        ----------
-        state: State
-            The current state of the tennis court.
-
-        Returns
-        -------
-        action: Action
-            The action the player takes.
-        """
-        # TODO: Maybe pick the action based on our existing dataset as well?
-        hit_type = random.choice(HIT_TYPES)
-        # When the ball to return is a serve, it goes to a specific location.
-        # For example, if the server serves the ball at "BL", the ball has to
-        # go "TL" at the other side of the court. So the only reasonable
-        # movement to pick here for the player is "TL".
-        if state.is_serve:
-            if state.ball_position == "BL":
-                player_movement = "TL"
-            elif state.ball_position == "BR":
-                player_movement = "TR"
-        else:
-            player_movement = random.choice(POSITIONS)
-        action = Action(hit_type=hit_type, player_movement=player_movement)
-        return action
-
-
 class TennisSimulator(object):
     """A class that simulates a tennis match."""
 
     def __init__(self):
-        self.players = [Player(i) for i in range(2)]
+        self.players = [
+            DefaultPlayer(
+                player_id=i,
+                first_serve_success_rate=0.6,
+                second_serve_success_rate=0.8,
+                position_lookup_table=position_lookup_table,
+            ) for i in range(2)
+        ]
         self.history = {
             "player_0_pos": [],
             "player_1_pos": [],
