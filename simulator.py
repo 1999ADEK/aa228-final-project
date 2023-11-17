@@ -1,193 +1,207 @@
 import random
-from typing import Optional, Tuple
+from typing import List, NamedTuple, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
+HIT_TYPES = [
+    "forehand_slice",
+    "forehand_topspin",
+    "forehand_return",
+    "backhand_slice",
+    "backhand_topspin",
+    "backhand_return",
+    "backhand_volley",
+]
 
-STROKE_TYPES = [
-    'forehand',
-    'backhand',
-]
-BALL_HIT_TYPES = [
-    'serve',
-    'slice',
-    'topspin',
-    'return',
-    'volley',
-    'stop',
-    'smash',
-    'lob',
-]
 POSITIONS = [
     "TL",
     "TR",
     "BL",
     "BR",
 ]
-SPEED = [0, 1]
 
 speed_lookup_table = {
-    # (stroke, ball_hit):    (avg, std)
-    ("forehand", "serve"):   (30.87, 3.85),
-    ("forehand", "slice"):   (14.20, 2.04),
-    ("forehand", "topspin"): (21.86, 2.92),
-    ("forehand", "return"):  (20.26, 4.96),
-    ("backhand", "slice"):   (13.81, 3.41),
-    ("backhand", "topspin"): (21.42, 3.60),
-    ("backhand", "return"):  (19.44, 3.58),
-    ("backhand", "volley"):  (6.88,  1.60),
-    ("backhand", "stop"):    (7.54,  0.87),
-}
-
-action_success_rate = {
-    # (stroke, ball_hit):    prob
-    ("forehand", "serve"):   0.7,
-    ("forehand", "slice"):   0.7,
-    ("forehand", "topspin"): 0.7,
-    ("forehand", "return"):  0.7,
-    ("backhand", "slice"):   0.7,
-    ("backhand", "topspin"): 0.7,
-    ("backhand", "return"):  0.7,
-    ("backhand", "volley"):  0.7,
-    ("backhand", "stop"):    0.7,
+    "forehand_serve":   (30.87, 3.85),
+    "forehand_slice":   (14.20, 2.04),
+    "forehand_topspin": (21.86, 2.92),
+    "forehand_return":  (20.26, 4.96),
+    "backhand_slice":   (13.81, 3.41),
+    "backhand_topspin": (21.42, 3.60),
+    "backhand_return":  (19.44, 3.58),
+    "backhand_volley":  (6.88,  1.60),
 }
 
 position_lookup_table = {
-    "TL": {"TL": 0.28, "TR": 0.12, "BL": 0.36, "BR": 0.24},
-    "TR": {"TL": 0.12, "TR": 0.28, "BL": 0.24, "BR": 0.36},
-    "BL": {"TL": 0.21, "TR": 0.09, "BL": 0.49, "BR": 0.21},
-    "BR": {"TL": 0.09, "TR": 0.21, "BL": 0.21, "BR": 0.49},
+    "TL": {"TL": 0.93, "TR": 0.03, "BL": 0.03, "BR": 0.01},
+    "TR": {"TL": 0.03, "TR": 0.93, "BL": 0.01, "BR": 0.03},
+    "BL": {"TL": 0.03, "TR": 0.01, "BL": 0.93, "BR": 0.03},
+    "BR": {"TL": 0.01, "TR": 0.03, "BL": 0.03, "BR": 0.93},
 }
 
-action_probs = {
-    # (stroke, ball_hit):    prob
-    ("forehand", "serve"):   0.0, # Set to zero since it only happens at the beginning
-    ("forehand", "slice"):   0.125,
-    ("forehand", "topspin"): 0.125,
-    ("forehand", "return"):  0.125,
-    ("backhand", "slice"):   0.125,
-    ("backhand", "topspin"): 0.125,
-    ("backhand", "return"):  0.125,
-    ("backhand", "volley"):  0.125,
-    ("backhand", "stop"):    0.125,
-}
 
-action_sets = list(action_probs.keys())
+
+class State(NamedTuple):
+    """A class used to represent a state of the tennis court.
+
+    player_positions: List[str]
+        The positions of the two players at the current timestep.
+    ball_position: str
+        The position of the tennis ball.
+    is_serve: bool
+        Whether the ball is a serve. Defaults to False.
+    """
+    player_positions: List[str]
+    ball_position: str
+    is_serve: bool = False
+
+class Action(NamedTuple):
+    """A class used to represent an action.
+    
+    hit_type: str
+        How the player hits the ball.
+    player_movement:
+        The destination the player attempts to go to.
+    """
+    hit_type: str
+    player_movement: str
 
 
 class Player(object):
     """A class used to represent a tennis player."""
 
-    def __init__(self):
+    def __init__(self, player_id):
+        self.player_id = player_id
         self.speed_lookup_table = speed_lookup_table
         self.position_lookup_table = position_lookup_table
-        self.action_probs = action_probs
-        self.action_success_rate = action_success_rate
+        self.first_serve_success_rate = 0.5
+        self.second_serve_success_rate = 0.8
+
+    def check_serve_success(self, is_first_serve: bool = True) -> bool:
+        """Determine if a serve is successful.
+
+        Parameters
+        ----------
+        is_first_serve: bool
+            Whether this is the first or second serve.
+        """
+        if is_first_serve:
+            success_rate = self.first_serve_success_rate
+        else:
+            success_rate = self.second_serve_success_rate
+        return np.random.uniform() < success_rate
 
     def update_state(
         self,
-        state: Tuple[str, float],
-        action: Tuple[str, str],
-    ) -> Tuple[str, float]:
+        current_state: State,
+        action: Action,
+    ) -> State:
         """Updates the state based on current state and action.
 
         Parameters
         ----------
-        state: Tuple[str, float]
-            The state of the tennis ball as a tuple (position, speed).
-            (speed == 0) means the player misses the ball or the ball goes
-            outside the court. In this case, the opponent get one point.
-        action: Tuple[str, str]
-            The action the player takes as a tuple (stroke, ball_hit_type).
+        current_state: State
+            The current state of the tennis court.
+        action: Action
+            The action the player takes.
 
         Returns
         -------
-        next_position: str
-            The position of the ball in the next time frame.
-        next_speed: float
-            The speed of the ball in the next time frame.
+        next_state: State
+            The next state of the tennis court.
         """
-
-        # Unpack current state and action
-        position, speed = state
-        stroke, shot = action
-
-        # Determine the speed of the next state
-        if np.random.uniform() > self.action_success_rate.get(action, 0):
-            # Attempt fails
-            next_speed = 0
-        else:
-            mean, std = self.speed_lookup_table.get(action, (0, 0))
-            next_speed = np.random.normal(mean, std)
-        
-        # Determine the position of the next state
-        next_position = np.random.choice(
+        player_positions = current_state.player_positions
+        player_movement = action.player_movement
+        # Stochastic outcome of player_movement
+        player_positions[self.player_id] = np.random.choice(
             POSITIONS,
-            p=list(self.position_lookup_table[position].values())
+            p=list(self.position_lookup_table[player_movement].values())
         )
 
-        return (next_position, next_speed)
+        # TODO(@rqwang): Determine ball_position based on the existing dataset.
+        ball_position = np.random.choice(POSITIONS)
+
+        next_state = State(
+            player_positions=player_positions,
+            ball_position=ball_position,
+        )
+        return next_state
 
     def choose_action(
-        self, state: Optional[Tuple[str, float]] = None
-    ) -> Tuple[str, str]:
+        self, state: State
+    ) -> Action:
         """Chooses an action for the player.
 
         Parameters
         ----------
-        state: Tuple[str, float]
-            The state of the tennis ball as a tuple (position, speed).
+        state: State
+            The current state of the tennis court.
 
         Returns
         -------
-        action: Tuple[str, str]
-            The action the player takes as a tuple (stroke, ball_hit_type).
+        action: Action
+            The action the player takes.
         """
-        action_idx = np.random.choice(
-            len(action_sets),
-            p=list(self.action_probs.values())
-        )
-        return action_sets[action_idx]
+        # TODO: Maybe pick the action based on our existing dataset as well?
+        hit_type = random.choice(HIT_TYPES)
+        # When the ball to return is a serve, it goes to a specific location.
+        # For example, if the server serves the ball at "BL", the ball has to
+        # go "TL" at the other side of the court. So the only reasonable
+        # movement to pick here for the player is "TL".
+        if state.is_serve:
+            if state.ball_position == "BL":
+                player_movement = "TL"
+            elif state.ball_position == "BR":
+                player_movement = "TR"
+        else:
+            player_movement = random.choice(POSITIONS)
+        action = Action(hit_type=hit_type, player_movement=player_movement)
+        return action
 
 
 class TennisSimulator(object):
     """A class that simulates a tennis match."""
 
     def __init__(self):
-        self.players = [Player() for _ in range(2)]
+        self.players = [Player(i) for i in range(2)]
         self.history = {
-            "player": [],
-            "position": [],
-            "speed": [],
-            "stroke": [],
-            "ball_hit": [],
+            "player_0_pos": [],
+            "player_1_pos": [],
+            "hitter": [],
+            "receiver": [],
+            "is_serve": [],
+            "ball_pos": [],
+            "receiver_hit_type": [],
+            "receiver_movement": [],
         }
         self.score_board = [[] for _ in range(2)]
 
     def update_history(
         self,
         player_id: int,
-        state: Tuple[str, float],
-        action: Tuple[str, str],
+        state: State,
+        action: Action,
     ) -> None:
         """Updates the log.
 
         Parameters
         ----------
         player_id: int
-            The id of the player. Should be either 0 or 1.
-        state: Tuple[str, float]
-            The state of the tennis ball as a tuple (position, speed).
-        action: Tuple[str, str]
-            The action the player takes as a tuple (stroke, ball_hit_type).
+            The id of the current receiver. Should be either 0 or 1.
+        state: State
+            The state of the tennis court.
+        action: Action
+            The action the receiver takes.
         """
-
-        self.history["player"].append(player_id)
-        self.history["position"].append(state[0])
-        self.history["speed"].append(state[1])
-        self.history["stroke"].append(action[0])
-        self.history["ball_hit"].append(action[1])
+        
+        self.history["player_0_pos"].append(state.player_positions[0])
+        self.history["player_1_pos"].append(state.player_positions[1])
+        self.history["hitter"].append(1 - player_id)
+        self.history["receiver"].append(player_id)
+        self.history["is_serve"].append(state.is_serve)
+        self.history["ball_pos"].append(state.ball_position)
+        self.history["receiver_hit_type"].append(action.hit_type)
+        self.history["receiver_movement"].append(action.player_movement)
 
     def simulate_point(
         self,
@@ -210,37 +224,33 @@ class TennisSimulator(object):
             The winner of the point.
         """
 
+        server = self.players[serve_id]
         # First serve
-        state = self.players[serve_id].update_state(
-            (serve_position, 0),
-            ("forehand", "serve"),
-        )
-        self.update_history(
-            serve_id,
-            (serve_position, 0),
-            ("forehand", "serve"),
-        )
-        if state[1] == 0:
+        if not server.check_serve_success(is_first_serve=True):
             # Second serve
-            state = self.players[serve_id].update_state(
-                (serve_position, 0),
-                ("forehand", "serve"),
-            )
-            self.update_history(
-                serve_id,
-                (serve_position, 0),
-                ("forehand", "serve"),
-            )
+            if not server.check_serve_success(is_first_serve=False):
+                # Double Fault, the opponent wins the point
+                return 1 - serve_id
+
+        # Initial state
+        state = State(
+            player_positions=[serve_position, serve_position],
+            ball_position=serve_position,
+            is_serve=True,
+        )
 
         player_id = serve_id
         # Simulate until the ball dies
-        while state[1] != 0:
+        while state.player_positions[player_id] == state.ball_position:
             player_id = 1 - player_id
-            action = self.players[player_id].choose_action()
+            action = self.players[player_id].choose_action(state)
             self.update_history(player_id, state, action)
             state = self.players[player_id].update_state(state, action)
 
-        return 1 - player_id
+        # When a player fails to get to the ball position,
+        # The opponent wins the point
+        winner_id = 1 - player_id
+        return winner_id
 
     def simulate_game(self, serve_id: int) -> Tuple[int, Tuple[int, int]]:
         """Simulates a game.
@@ -261,6 +271,7 @@ class TennisSimulator(object):
         scores = [0, 0]
         # Player who wins 4 points and has 2-point lead wins the game
         while max(scores) < 4 or abs(scores[0] - scores[1]) < 2:
+            # Change serve_position every two points
             if sum(scores) % 2 == 0:
                 serve_position = "BR"
             else:
