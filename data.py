@@ -51,6 +51,10 @@ def get_speed(x1, y1, x2, y2, prev_t, cur_t):
     v = d / (cur_t - prev_t)
     return v
 
+def get_dir(prev_x1, prev_y1, x1, y1):
+    d = np.array([x1 - prev_x1, y1 - prev_y1])
+    return d / np.linalg.norm(d)
+
 
 
 if __name__ == '__main__':
@@ -65,12 +69,13 @@ if __name__ == '__main__':
                 df.loc[i, 'receiver'] = 'Djokovic'
 
     # ------------------------------------------------------------------------------
-    # Add area_id and ball_speed
+    # Add area_id and ball_speed, ball_v
     # ------------------------------------------------------------------------------
 
     hitter_areas = []
     receiver_areas = []
     speeds = []
+    velocities = [] # velocity's direction (unit vector)
 
     prev_t = -1
     prev_x1, prev_y1 = None, None
@@ -90,9 +95,13 @@ if __name__ == '__main__':
             # the speed of the previous ball hit accurately
             if is_serve:
                 v = None
+                d = None
             else:
                 v = get_speed(prev_x1, prev_y1, x1, y1, prev_t, cur_t)
+                d = get_dir(prev_x1, prev_y1, x1, y1)
             speeds.append(v)
+            velocities.append(d)
+
         prev_t = cur_t
         prev_x1, prev_y1 = x1, y1
 
@@ -100,12 +109,14 @@ if __name__ == '__main__':
     
     # unable to calculate the speed of the last one since we only have the start time
     speeds.append(None)
+    velocities.append(None)
 
     df['hitter_area'] = hitter_areas
     df['receiver_area'] = receiver_areas
     df['ball_speed'] = speeds
+    df['ball_dir'] = velocities
 
-    df.to_csv('temp1.csv') # hitter area, receiver area, ball speed
+    # df.to_csv('temp1.csv') # hitter area, receiver area, ball speed
 
     # ---------------------------------------------------------------------------------
     # Add player speed
@@ -142,8 +153,6 @@ if __name__ == '__main__':
     
 
     df.to_csv('temp2.csv')
-    
-
 
     # Get ball speed data
     d_ball_speed_dict = dict((k, []) for k in product(STROKE_TYPES, BALL_HIT_TYPES))
@@ -174,6 +183,7 @@ if __name__ == '__main__':
     
     print("Nadal: ")
     get_ball_speed_stats(n_ball_speed_dict)
+    print()
 
 
     # Get player speed for receiving each type of ball hits
@@ -205,3 +215,62 @@ if __name__ == '__main__':
     
     print("Nadal: ")
     get_player_speed_stats(n_speed_dict)
+    print()
+
+
+    # Get ball change of velocity
+    d_ball_dir_dict = dict((k, []) for k in product(STROKE_TYPES, BALL_HIT_TYPES))
+    n_ball_dir_dict = dict((k, []) for k in product(STROKE_TYPES, BALL_HIT_TYPES))
+
+    for i in range(1, len(df)):
+        if df.loc[i, "ball_dir"] is not None:
+            isserve = df.loc[i, "isserve"]
+
+            if isserve or df.loc[i-1, "ball_dir"].any():
+
+                hitter_y = df.loc[i, "hitter_y"]
+                hitter = df.loc[i, "hitter"]
+                stroke, type = df.loc[i, "stroke"], df.loc[i, "type"]
+                
+                if isserve:
+                    dv = df.loc[i, "ball_dir"]
+                    if hitter_y > NET_Y:
+                        dv *= -1.0
+                    
+                    dtheta = np.arctan2(dv[1], dv[0])
+                    if hitter == "Nadal":
+                        n_ball_dir_dict[(stroke, type)].append(dtheta)
+                    else:
+                        d_ball_dir_dict[(stroke, type)].append(dtheta)
+
+                else:
+                    if hitter_y < NET_Y:
+                        v0 = df.loc[i-1, "ball_dir"]
+                        v1 = df.loc[i, "ball_dir"]
+                    else:
+                        v0 = - df.loc[i-1, "ball_dir"]
+                        v1 = - df.loc[i, "ball_dir"]
+                    
+                    theta0 = np.arctan2(v0[1], v0[0])
+                    theta1 = np.arctan2(v1[1], v0[0])
+
+                    dtheta = theta1 - theta0
+                    if hitter == "Nadal":
+                        n_ball_dir_dict[(stroke, type)].append(dtheta)
+                    else:
+                        d_ball_dir_dict[(stroke, type)].append(dtheta)
+
+    
+    def get_ball_change_dir_stats(ball_dir_dict):
+        for k in product(STROKE_TYPES, BALL_HIT_TYPES):
+            if len(ball_dir_dict[k]) > 0:
+                ball_dirs = np.array(ball_dir_dict[k])
+                stroke, type = k
+                print(f"Stroke: {stroke}, Type: {type}, Speed: avg {np.rad2deg(np.mean(ball_dirs))}, std {np.rad2deg(np.std(ball_dirs))}")
+
+
+    print("Djokovic: ")
+    get_ball_change_dir_stats(d_ball_dir_dict)
+    
+    print("Nadal: ")
+    get_ball_change_dir_stats(n_ball_dir_dict)         
