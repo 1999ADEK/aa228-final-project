@@ -266,7 +266,7 @@ if __name__ == '__main__':
             if len(ball_dir_dict[k]) > 0:
                 ball_dirs = np.array(ball_dir_dict[k])
                 stroke, type = k
-                print(f"Stroke: {stroke}, Type: {type}, Speed: avg {np.rad2deg(np.mean(ball_dirs))}, std {np.rad2deg(np.std(ball_dirs))}")
+                print(f"Stroke: {stroke}, Type: {type}, Change of dir: avg {np.rad2deg(np.mean(ball_dirs))}, std {np.rad2deg(np.std(ball_dirs))}")
 
 
     print("Djokovic: ")
