@@ -37,6 +37,7 @@ class DefaultPlayer(BasePlayer):
 
         next_state = State(
             player_positions=player_positions,
+            hitter_hit_type=action.hit_type,
             ball_position=ball_position,
         )
         return next_state
@@ -48,7 +49,7 @@ class DefaultPlayer(BasePlayer):
         # For example, if the server serves the ball at "BL", the ball has to
         # go "TL" at the other side of the court. So the only reasonable
         # movement to pick here for the player is "TL".
-        if state.is_serve:
+        if state.hitter_hit_type == "forehand_serve":
             if state.ball_position == "BL":
                 player_movement = "TL"
             elif state.ball_position == "BR":

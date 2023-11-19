@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Tuple
 
 import pandas as pd
@@ -38,16 +39,7 @@ class TennisSimulator(object):
                 position_lookup_table=position_lookup_table,
             ) for i in range(2)
         ]
-        self.history = {
-            "player_0_pos": [],
-            "player_1_pos": [],
-            "hitter": [],
-            "receiver": [],
-            "is_serve": [],
-            "ball_pos": [],
-            "receiver_hit_type": [],
-            "receiver_movement": [],
-        }
+        self.history = defaultdict(list)
         self.score_board = [[] for _ in range(2)]
 
     def update_history(
@@ -72,8 +64,8 @@ class TennisSimulator(object):
         self.history["player_1_pos"].append(state.player_positions[1])
         self.history["hitter"].append(1 - player_id)
         self.history["receiver"].append(player_id)
-        self.history["is_serve"].append(state.is_serve)
         self.history["ball_pos"].append(state.ball_position)
+        self.history["hitter_hit_type"].append(state.hitter_hit_type)
         self.history["receiver_hit_type"].append(action.hit_type)
         self.history["receiver_movement"].append(action.player_movement)
 
@@ -109,8 +101,8 @@ class TennisSimulator(object):
         # Initial state
         state = State(
             player_positions=[serve_position, serve_position],
+            hitter_hit_type="forehand_serve",
             ball_position=serve_position,
-            is_serve=True,
         )
 
         player_id = serve_id

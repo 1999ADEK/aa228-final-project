@@ -25,14 +25,16 @@ class State(NamedTuple):
 
     player_positions: List[str]
         The positions of the two players at the current timestep.
+    hitter_hit_type: str
+        How the hitter hits the ball. Note that at each timestep,
+        the player that will take action is the receiver, not the
+        player.
     ball_position: str
         The position of the tennis ball.
-    is_serve: bool
-        Whether the ball is a serve. Defaults to False.
     """
     player_positions: List[str]
+    hitter_hit_type: str
     ball_position: str
-    is_serve: bool = False
 
 class Action(NamedTuple):
     """A class used to represent an action.
