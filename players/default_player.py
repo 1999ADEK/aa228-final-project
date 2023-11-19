@@ -32,8 +32,24 @@ class DefaultPlayer(BasePlayer):
             p=list(self.position_lookup_table[player_movement].values())
         )
 
-        # TODO(@rqwang): Determine ball_position based on the existing dataset.
-        ball_position = np.random.choice(POSITIONS)
+        # Determine ball_position
+        hitter_hit_type = current_state.hitter_hit_type
+        ball_position = current_state.ball_position
+        # A serve can only be in a certain position
+        if hitter_hit_type == "forehand_serve":
+            ball_position = 'T' + ball_position[1]
+        # A volley results in a slower ball
+        if "volley" in hitter_hit_type:
+            ball_position = 'T' + ball_position[1]
+        # Stochastic outcome of return
+        if "return" in hitter_hit_type:
+            ball_position = ball_position[0] + np.random.choice(['L', 'R'])
+        # Apply overall stochasticity
+        if hitter_hit_type != "forehand_serve":
+            ball_position = np.random.choice(
+                POSITIONS,
+                p=list(self.position_lookup_table[ball_position].values())
+            )
 
         next_state = State(
             player_positions=player_positions,
