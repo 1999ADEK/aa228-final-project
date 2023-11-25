@@ -2,6 +2,7 @@ import sys
 from typing import Dict
 
 import numpy as np
+import pickle
 
 sys.path.append("../")
 from .base_player import BasePlayer
@@ -59,8 +60,21 @@ class DefaultPlayer(BasePlayer):
         return next_state
 
     def choose_action(self, state: State) -> Action:
-        # TODO: Maybe pick the action based on our existing dataset as well?
-        hit_type = np.random.choice(HIT_TYPES)
+        """Chooses an action based on the current state."""
+        # Load the encoder from the file using pickle
+        with open('model/ordinal_encoder.pkl', 'rb') as encoder_file:
+            loaded_ordinal_encoder = pickle.load(encoder_file)
+
+        # Load the encoder from the file using pickle
+        with open('model/label_encoder.pkl', 'rb') as encoder_file:
+            loaded_label_encoder = pickle.load(encoder_file)
+
+        # Load the kNN model from the file using pickle
+        with open('model/knn_model.pkl', 'rb') as model_file:
+            loaded_knn_model = pickle.load(model_file)
+
+        state_input = loaded_ordinal_encoder.transform([[state.ball_position, state.player_positions[self.player_id], state.hitter_hit_type]])
+        hit_type = loaded_label_encoder.inverse_transform(loaded_knn_model.predict(state_input))[0]
         # When the ball to return is a serve, it goes to a specific location.
         # For example, if the server serves the ball at "BL", the ball has to
         # go "TL" at the other side of the court. So the only reasonable
