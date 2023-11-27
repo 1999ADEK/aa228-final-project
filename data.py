@@ -152,7 +152,7 @@ if __name__ == '__main__':
         df.loc[i-1, "score"] = current_score
     
 
-    df.to_csv('temp2.csv')
+    df.to_csv('data/data.csv')
 
     # Get ball speed data
     d_ball_speed_dict = dict((k, []) for k in product(STROKE_TYPES, BALL_HIT_TYPES))

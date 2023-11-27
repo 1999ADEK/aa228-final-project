@@ -4,8 +4,10 @@ from typing import Tuple
 import pandas as pd
 
 from utils import Action, State
-from players import DefaultPlayer
+from players import DefaultPlayer, QLearningPlayer
 
+import warnings
+warnings.filterwarnings("ignore")
 
 speed_lookup_table = {
     "forehand_serve":   (30.87, 3.85),
@@ -33,11 +35,18 @@ class TennisSimulator(object):
     def __init__(self):
         self.players = [
             DefaultPlayer(
-                player_id=i,
+                player_id=0,
                 first_serve_success_rate=0.6,
                 second_serve_success_rate=0.8,
                 position_lookup_table=position_lookup_table,
-            ) for i in range(2)
+            ),
+            QLearningPlayer(
+                player_id=1,
+                first_serve_success_rate=0.6,
+                second_serve_success_rate=0.8,
+                position_lookup_table=position_lookup_table,
+                q_learning_policy="model/q_learning.pkl",
+            )
         ]
         self.history = defaultdict(list)
         self.score_board = [[] for _ in range(2)]

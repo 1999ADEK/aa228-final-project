@@ -74,7 +74,12 @@ class DefaultPlayer(BasePlayer):
             loaded_knn_model = pickle.load(model_file)
 
         state_input = loaded_ordinal_encoder.transform([[state.ball_position, state.player_positions[self.player_id], state.hitter_hit_type]])
-        hit_type = loaded_label_encoder.inverse_transform(loaded_knn_model.predict(state_input))[0]
+
+        # add exploration
+        if np.random.uniform() < 0.1:
+            hit_type = np.random.choice(HIT_TYPES)
+        else:
+            hit_type = loaded_label_encoder.inverse_transform(loaded_knn_model.predict(state_input))[0]
         # When the ball to return is a serve, it goes to a specific location.
         # For example, if the server serves the ball at "BL", the ball has to
         # go "TL" at the other side of the court. So the only reasonable
@@ -84,6 +89,8 @@ class DefaultPlayer(BasePlayer):
                 player_movement = "TL"
             elif state.ball_position == "BR":
                 player_movement = "TR"
+            else:
+                player_movement = np.random.choice(POSITIONS)
         else:
             player_movement = np.random.choice(POSITIONS)
         action = Action(hit_type=hit_type, player_movement=player_movement)
