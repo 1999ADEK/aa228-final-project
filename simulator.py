@@ -41,6 +41,7 @@ class TennisSimulator(object):
         ]
         self.history = defaultdict(list)
         self.score_board = [[] for _ in range(2)]
+        self.reward = [0, 0]
 
     def update_history(
         self,
@@ -68,6 +69,8 @@ class TennisSimulator(object):
         self.history["hitter_hit_type"].append(state.hitter_hit_type)
         self.history["receiver_hit_type"].append(action.hit_type)
         self.history["receiver_movement"].append(action.player_movement)
+        self.history["player_0_reward"].append(self.reward[0])
+        self.history["player_1_reward"].append(self.reward[1])
 
     def simulate_point(
         self,
@@ -144,6 +147,8 @@ class TennisSimulator(object):
                 serve_position = "BL"
             winner_id = self.simulate_point(serve_id, serve_position)
             scores[winner_id] += 1
+            self.reward[winner_id] += 10
+            self.reward[1 - winner_id] -= 10
 
         winner_id = 0 if scores[0] > scores[1] else 1
         return winner_id, scores  
