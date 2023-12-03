@@ -71,9 +71,9 @@ def q_learning(num_states, num_actions, lr=0.5, gamma=0.99):
             receive_pos = df.loc[i, "receiver_movement"]
             r1 = df.loc[i, "player_1_reward"]
 
-            r1_prev = 0
-            if i > 0:
-                r1_prev = df.loc[i-1, "player_1_reward"]
+            r1_next = r1
+            if i < len(df)-1:
+                r1_next = df.loc[i+1, "player_1_reward"]
 
         
             # player pos, ball pos, hit type
@@ -81,7 +81,7 @@ def q_learning(num_states, num_actions, lr=0.5, gamma=0.99):
             # receive pos, receive type
             a = get_action_index(receive_pos, receive_type)
 
-            r = r1 - r1_prev + 10.1
+            r = r1_next - r1 + 10.1
 
             next_state_idx = -1
             for j in range(i+1, len(df)):
@@ -89,6 +89,7 @@ def q_learning(num_states, num_actions, lr=0.5, gamma=0.99):
                     next_state_idx = j
                     break
             
+            # end of game
             if next_state_idx == -1:
                 sp = num_states - 1
             else:
@@ -118,6 +119,10 @@ def approx_q_values(Q_table, num_states, num_actions):
     Q = np.zeros_like(Q_table)
 
     for a in range(num_actions):
+        receive_type = a % len(HIT_TYPES)
+        if HIT_TYPES[receive_type] == "forehand_serve":
+            continue
+
         matrix = Q_table[:num_states-1, a].reshape((len(POSITIONS), len(POSITIONS), len(HIT_TYPES)))
         
         h, w, c = np.nonzero(matrix)
@@ -155,18 +160,18 @@ if __name__ == '__main__':
     # (player's new position, ball hit type)
     num_actions = len(POSITIONS) * len(HIT_TYPES)
 
-    # print(num_states, num_actions)
+    print(num_states, num_actions)
 
-    # Q_table = q_learning(num_states, num_actions)
+    Q_table = q_learning(num_states, num_actions)
 
-    # Q_table = approx_q_values(Q_table, num_states, num_actions)
+    Q_table = approx_q_values(Q_table, num_states, num_actions)
     
-    # policy = get_best_actions(Q_table)
-    # policy = policy.tolist()
+    policy = get_best_actions(Q_table)
+    policy = policy.tolist()
 
-    # with open("q_learning.policy", 'w') as f:
-    #     for i in range(num_states):
-    #         f.write(f'{policy[i]}\n')
+    with open("q_learning.policy", 'w') as f:
+        for i in range(num_states):
+            f.write(f'{policy[i]}\n')
 
     state_to_action = dict()
     with open("q_learning.policy", 'r') as f:
