@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Tuple
+from typing import List, Optional, Tuple
 
 import pandas as pd
 
@@ -32,23 +32,40 @@ position_lookup_table = {
 class TennisSimulator(object):
     """A class that simulates a tennis match."""
 
-    def __init__(self):
-        self.players = [
-            DefaultPlayer(
-                player_id=0,
-                first_serve_success_rate=0.6,
-                second_serve_success_rate=0.8,
-                position_lookup_table=position_lookup_table,
-            ),
-            QLearningPlayer(
-                player_id=1,
-                first_serve_success_rate=0.6,
-                second_serve_success_rate=0.8,
-                position_lookup_table=position_lookup_table,
-                q_learning_policy="model/q_learning.pkl",
-            )
-        ]
+    def __init__(self, players=Optional[List]):
+        """Initializes the simulator.
+
+        Parameters
+        ----------
+        players: Optional[List]
+            The two players in the match.
+        """
+        if players is not None:
+            assert len(players) == 2
+            self.players = players
+        else:
+            self.players = [
+                DefaultPlayer(
+                    player_id=0,
+                    first_serve_success_rate=0.6,
+                    second_serve_success_rate=0.8,
+                    position_lookup_table=position_lookup_table,
+                ),
+                QLearningPlayer(
+                    player_id=1,
+                    first_serve_success_rate=0.6,
+                    second_serve_success_rate=0.8,
+                    position_lookup_table=position_lookup_table,
+                    q_learning_policy="model/q_learning.pkl",
+                )
+            ]
         self.history = defaultdict(list)
+        self.score_board = [[] for _ in range(2)]
+        self.reward = [0, 0]
+
+    def reset(self):
+        """Resets the score and reward before a new match."""
+
         self.score_board = [[] for _ in range(2)]
         self.reward = [0, 0]
 
