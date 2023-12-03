@@ -6,7 +6,7 @@ import pickle
 
 sys.path.append("../")
 from .base_player import BasePlayer
-from utils import Action, State, HIT_TYPES, POSITIONS
+from utils import Action, State, RECEIVE_HIT_TYPES, POSITIONS
 
 class DefaultPlayer(BasePlayer):
     """A class used to represent the default tennis player."""
@@ -77,7 +77,7 @@ class DefaultPlayer(BasePlayer):
 
         # add exploration
         if np.random.uniform() < 0.1:
-            hit_type = np.random.choice(HIT_TYPES)
+            hit_type = np.random.choice(RECEIVE_HIT_TYPES)
         else:
             hit_type = loaded_label_encoder.inverse_transform(loaded_knn_model.predict(state_input))[0]
         # When the ball to return is a serve, it goes to a specific location.

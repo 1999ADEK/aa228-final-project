@@ -61,8 +61,8 @@ def q_learning(num_states, num_actions, lr=0.5, gamma=0.99):
                 continue
 
             hit_type = df.loc[i, "hitter_hit_type"]
-            if hit_type == "forehand_serve":
-                continue
+            # if hit_type == "forehand_serve":
+            #     continue
 
 
             # s, a, r, sp = df[i]

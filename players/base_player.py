@@ -18,6 +18,9 @@ class BasePlayer(object):
         self.first_serve_success_rate = first_serve_success_rate
         self.second_serve_success_rate = second_serve_success_rate
 
+    def update_policy(self, current_state, action, reward, next_state):
+        pass
+
     def check_serve_success(self, is_first_serve: bool = True) -> bool:
         """Determine if a serve is successful.
 

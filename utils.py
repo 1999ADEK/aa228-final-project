@@ -12,6 +12,16 @@ HIT_TYPES = [
     "backhand_volley",
 ]
 
+RECEIVE_HIT_TYPES = [
+    "forehand_slice",
+    "forehand_topspin",
+    "forehand_return",
+    "backhand_slice",
+    "backhand_topspin",
+    "backhand_return",
+    "backhand_volley",
+]
+
 
 POSITIONS = [
     "TL",
