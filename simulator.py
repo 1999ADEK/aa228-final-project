@@ -4,7 +4,7 @@ from typing import Tuple
 import pandas as pd
 
 from utils import Action, State
-from players import DefaultPlayer, QLearningPlayer
+from players import DefaultPlayer, OnlineQLearningPlayer
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -40,7 +40,7 @@ class TennisSimulator(object):
                 second_serve_success_rate=0.8,
                 position_lookup_table=position_lookup_table,
             ),
-            QLearningPlayer(
+            OnlineQLearningPlayer(
                 player_id=1,
                 first_serve_success_rate=0.6,
                 second_serve_success_rate=0.8,
