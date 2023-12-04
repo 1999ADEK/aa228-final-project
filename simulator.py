@@ -4,7 +4,8 @@ from typing import Tuple
 import pandas as pd
 
 from utils import Action, State
-from players import DefaultPlayer, OnlineQLearningPlayer
+from players import DefaultPlayer, QLearningPlayer, OnlineQLearningPlayer
+import copy
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -45,8 +46,8 @@ class TennisSimulator(object):
                 first_serve_success_rate=0.6,
                 second_serve_success_rate=0.8,
                 position_lookup_table=position_lookup_table,
-                q_learning_policy="model/q_learning.pkl",
-                is_train=True,
+                q_learning_policy="model/online_q_learning.pkl",
+                is_train=False,
             )
         ]
         self.history = defaultdict(list)
@@ -127,26 +128,16 @@ class TennisSimulator(object):
         # Simulate until the ball dies
         while state.player_positions[player_id] == state.ball_position:
             player_id = 1 - player_id
-            current_state = state
+            current_state = copy.deepcopy(state)
 
             action = self.players[player_id].choose_action(state)
             self.update_history(player_id, state, action)
             state = self.players[player_id].update_state(state, action)
-            
-            # received the ball
-            if state.player_positions[player_id] == state.ball_position:
-                current_player_reward = 0
-                opponent_reward = 0
-            else:
-                current_player_reward = -10
-                opponent_reward = 10
 
             # collect s, a, r for the current player
             # s (player's position, ball position, opponent hit type)
             # a (player's new position, ball hit type)
-            self.players[player_id].update_policy(current_state, action, current_player_reward, None)
-            # collect sp for the opponent
-            self.players[1 - player_id].update_policy(None, None, opponent_reward, state)
+            self.players[player_id].update_policy(current_state, copy.deepcopy(action), self.reward[player_id], None)
 
         # When a player fails to get to the ball position,
         # The opponent wins the point

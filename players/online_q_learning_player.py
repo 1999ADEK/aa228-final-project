@@ -22,6 +22,7 @@ class OnlineQLearningPlayer(BasePlayer):
         is_train: bool,
         learning_rate = 0.3,
         gamma = 0.99,
+        c = 1.0,
     ):
         super().__init__(
             player_id,
@@ -30,30 +31,40 @@ class OnlineQLearningPlayer(BasePlayer):
         )
 
         self.position_lookup_table = position_lookup_table
-        self.q_learning_policy = pickle.load(open(q_learning_policy, 'rb'))
+        self.q_learning_policy = pickle.load(open(q_learning_policy, 'rb')) if q_learning_policy != "" else None
         self.is_train = is_train
 
         self.Q_table = np.random.rand(NUM_STATES, NUM_ACTIONS)
         self.T = np.ones((NUM_STATES, NUM_ACTIONS, NUM_STATES))
         self.learning_rate = learning_rate
         self.gamma = gamma
+        self.c = c
         # self.epsilon = 0.99
 
         self.current_state = None
         self.action = None
         self.reward = 0
     
-    def update_policy(self, current_state, action, reward, next_state):
+    def update_policy(self, state0, action, reward, state1):
         # update policy only when training
         if not self.is_train:
             return
         
-        if current_state is not None:
-            self.current_state = current_state
-            self.action = action
-            self.reward = reward + 8
+        # if current_state is not None:
+        #     self.current_state = current_state
+        #     self.action = action
+        #     self.reward += reward
         
-        elif next_state is not None and self.current_state is not None:
+        # elif next_state is not None and self.current_state is not None:
+
+        if self.current_state is None:
+            self.current_state = state0
+            self.action = action
+            self.reward = reward
+        # elif state0 is None:
+        #     self.reward += reward
+        else:
+            next_state = state0
             # player_pos, ball_pos, hit_type
             current_state_idx = get_state_index(
                 self.current_state.player_positions[self.player_id],
@@ -73,13 +84,16 @@ class OnlineQLearningPlayer(BasePlayer):
                 next_state.hitter_hit_type,
             )
 
-            self.reward += reward
-
+            # print(self.current_state, self.action, next_state, reward)
             cur_val = self.Q_table[current_state_idx, current_action_idx] 
-            update = self.reward + self.gamma * (np.max(self.Q_table[next_state_idx, :]) - cur_val)
+            update = (reward - self.reward) + 5 + self.gamma * np.max(self.Q_table[next_state_idx, :]) - cur_val
             self.Q_table[current_state_idx, current_action_idx] += self.learning_rate * update
 
             self.T[current_state_idx, current_action_idx, next_state_idx] += 1
+
+            self.current_state = state0
+            self.action = action
+            self.reward = reward
 
             # print(update)
             # print(current_state_idx, current_action_idx, self.Q_table[current_state_idx, current_action_idx])
@@ -123,7 +137,7 @@ class OnlineQLearningPlayer(BasePlayer):
     def choose_action(self, state: State) -> Action:
         """Chooses an action based on the current state."""
 
-        if not self.is_train:
+        if self.q_learning_policy is not None:
         
             move, hit_type = self.q_learning_policy[(state.player_positions[self.player_id], state.ball_position, state.hitter_hit_type)]
 
@@ -153,7 +167,7 @@ class OnlineQLearningPlayer(BasePlayer):
             # UCB1
             Na = np.sum(self.T[state_idx], axis=1)
             logN = np.log(np.sum(Na))
-            action_idx = np.argmax(self.Q_table[state_idx] + np.sqrt(logN / Na))
+            action_idx = np.argmax(self.Q_table[state_idx] + self.c * np.sqrt(logN / Na))
 
             # if np.random.rand() < self.epsilon:
             #     action_idx = np.random.randint(0, NUM_ACTIONS)
@@ -164,3 +178,12 @@ class OnlineQLearningPlayer(BasePlayer):
 
 
             return action_idx_to_action(action_idx)
+    
+
+    def get_best_policy(self):
+        Na = np.sum(self.T, axis=2) # (num_states, num_actions)
+        logN = np.log(np.sum(Na, axis=1)) # num_states
+
+        policy =  np.argmax(self.Q_table + self.c * np.sqrt(logN.reshape((-1, 1)) / Na), axis=1)
+
+        return policy
