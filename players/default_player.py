@@ -7,6 +7,7 @@ import pickle
 sys.path.append("../")
 from .base_player import BasePlayer
 from utils import Action, State, RECEIVE_HIT_TYPES, POSITIONS
+from .action_chooser import position_table
 
 class DefaultPlayer(BasePlayer):
     """A class used to represent the default tennis player."""
@@ -68,11 +69,15 @@ class DefaultPlayer(BasePlayer):
         # Load the encoder from the file using pickle
         with open('model/label_encoder.pkl', 'rb') as encoder_file:
             loaded_label_encoder = pickle.load(encoder_file)
+        with open('model/label_encoder_action.pkl', 'rb') as encoder_file:
+            loaded_label_encoder_action = pickle.load(encoder_file)
 
         # Load the kNN model from the file using pickle
         with open('model/knn_model.pkl', 'rb') as model_file:
             loaded_knn_model = pickle.load(model_file)
-
+        with open('model/knn_model_action.pkl', 'rb') as model_file:
+            loaded_knn_model_action = pickle.load(model_file)
+        
         state_input = loaded_ordinal_encoder.transform([[state.ball_position, state.player_positions[self.player_id], state.hitter_hit_type]])
 
         # add exploration
@@ -92,6 +97,7 @@ class DefaultPlayer(BasePlayer):
             else:
                 player_movement = np.random.choice(POSITIONS)
         else:
-            player_movement = np.random.choice(POSITIONS)
+            player_movement_idx = loaded_label_encoder_action.inverse_transform(loaded_knn_model_action.predict(state_input))[0]
+            player_movement = position_table[player_movement_idx]
         action = Action(hit_type=hit_type, player_movement=player_movement)
         return action
