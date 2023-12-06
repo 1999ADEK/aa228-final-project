@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.neighbors import KNeighborsRegressor
 
 from utils import HIT_TYPES, POSITIONS, State, Action
+from q_learning_utils import get_state_index, get_action_index, NUM_ACTIONS, NUM_STATES
 from simulator import TennisSimulator
 
 import pickle
@@ -24,21 +25,6 @@ def run_simulation():
     print(f"=======================")
     
     simulator.export_history("tmp.csv")
-
-
-def get_state_index(player_pos, ball_pos, hit_type):
-    player_pos_idx = POSITIONS.index(player_pos)
-    ball_pos_idx = POSITIONS.index(ball_pos)
-    hit_type_idx = HIT_TYPES.index(hit_type)
-    return player_pos_idx * len(POSITIONS) * len(HIT_TYPES) + ball_pos_idx * len(HIT_TYPES) + hit_type_idx
-
-
-
-def get_action_index(receive_pos, receive_type):
-    pos_idx = POSITIONS.index(receive_pos)
-    hit_type_idx = HIT_TYPES.index(receive_type)
-    return pos_idx * len(HIT_TYPES) + hit_type_idx
-
 
 
 def q_learning(num_states, num_actions, lr=0.5, gamma=0.99):
@@ -154,13 +140,8 @@ def approx_q_values(Q_table, num_states, num_actions):
 
 
 if __name__ == '__main__':
-    # (player's position, ball position, opponent hit type) + one state for end of game
-    num_states = len(POSITIONS) * len(POSITIONS) * len(HIT_TYPES) + 1
-
-    # (player's new position, ball hit type)
-    num_actions = len(POSITIONS) * len(HIT_TYPES)
-
-    print(num_states, num_actions)
+    num_states = NUM_STATES
+    num_actions = NUM_ACTIONS
 
     Q_table = q_learning(num_states, num_actions)
 
@@ -193,6 +174,3 @@ if __name__ == '__main__':
 
     with open('q_learning.pkl', 'wb') as f:
         pickle.dump(state_to_action, f)
-
-
-
