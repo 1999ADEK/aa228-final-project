@@ -1,40 +1,45 @@
 from collections import defaultdict
 from typing import List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 
-from utils import Action, State
-from players import DefaultPlayer, QLearningPlayer, OnlineQLearningPlayer
+from utils import (
+    Action,
+    State,
+    POS_CENTER_SERVICE_LINE,
+    POS_BASELINE,
+    DISTANCE_LOOKUP_TABLE_DJOKOVIC,
+    DIR_CHANGE_LOOKUP_TABLE_DJOKOVIC,
+)
+from players import DefaultPlayer#, QLearningPlayer, OnlineQLearningPlayer
 import copy
 
 import warnings
 warnings.filterwarnings("ignore")
 
-speed_lookup_table = {
-    "forehand_serve":   (30.87, 3.85),
-    "forehand_slice":   (14.20, 2.04),
-    "forehand_topspin": (21.86, 2.92),
-    "forehand_return":  (20.26, 4.96),
-    "backhand_slice":   (13.81, 3.41),
-    "backhand_topspin": (21.42, 3.60),
-    "backhand_return":  (19.44, 3.58),
-    "backhand_volley":  (6.88,  1.60),
-}
 
+def check_hit_success(player_position: np.ndarray, ball_position: np.ndarray):
+    """Checks whether the player can hit the ball based on the positions.
+        The assumption here is that a player can hit a ball that's within
+        1-meter range.
 
-position_lookup_table = {
-    "TL": {"TL": 0.93, "TR": 0.03, "BL": 0.03, "BR": 0.01},
-    "TR": {"TL": 0.03, "TR": 0.93, "BL": 0.01, "BR": 0.03},
-    "BL": {"TL": 0.03, "TR": 0.01, "BL": 0.93, "BR": 0.03},
-    "BR": {"TL": 0.01, "TR": 0.03, "BL": 0.03, "BR": 0.93},
-}
+        Parameters
+        ----------
+        player_position: np.ndarray of shape (2,)
+            The position of the player.
+        ball_position: np.ndarray of shape (2,)
+            The position of the tennis ball.
+    """
+    distance = np.linalg.norm(player_position - ball_position)
+    return distance < 1.0
 
 
 class TennisSimulator(object):
     """A class that simulates a tennis match."""
 
 
-    def __init__(self, players=Optional[List]):
+    def __init__(self, players: Optional[List] = None):
         """Initializes the simulator.
 
         Parameters
@@ -51,16 +56,16 @@ class TennisSimulator(object):
                     player_id=0,
                     first_serve_success_rate=0.6,
                     second_serve_success_rate=0.8,
-                    position_lookup_table=position_lookup_table,
+                    distance_lookup_table=DISTANCE_LOOKUP_TABLE_DJOKOVIC,
+                    dir_change_lookup_table=DIR_CHANGE_LOOKUP_TABLE_DJOKOVIC,
                 ),
-                QLearningPlayer(
-                    player_id=1,
+                DefaultPlayer(
+                    player_id=0,
                     first_serve_success_rate=0.6,
                     second_serve_success_rate=0.8,
-                    position_lookup_table=position_lookup_table,
-                    q_learning_policy="model/online_q_learning.pkl",
-                    is_train=False,
-                )
+                    distance_lookup_table=DISTANCE_LOOKUP_TABLE_DJOKOVIC,
+                    dir_change_lookup_table=DIR_CHANGE_LOOKUP_TABLE_DJOKOVIC,
+                ),
             ]
 
         self.history = defaultdict(list)
@@ -97,6 +102,7 @@ class TennisSimulator(object):
         self.history["hitter"].append(1 - player_id)
         self.history["receiver"].append(player_id)
         self.history["ball_pos"].append(state.ball_position)
+        self.history["ball_dir"].append(state.ball_direction)
         self.history["hitter_hit_type"].append(state.hitter_hit_type)
         self.history["receiver_hit_type"].append(action.hit_type)
         self.history["receiver_movement"].append(action.player_movement)
@@ -133,17 +139,26 @@ class TennisSimulator(object):
                 return 1 - serve_id
 
         # Initial state
+        # The serve_position is hard coded for now
+        serve_position = np.array([
+            POS_CENTER_SERVICE_LINE + (1.0 if serve_position == "BR" else -1.0),
+            POS_BASELINE - 0.1,
+        ])
         state = State(
             player_positions=[serve_position, serve_position],
             hitter_hit_type="forehand_serve",
             ball_position=serve_position,
+            ball_direction=0,
         )
 
         player_id = serve_id
         # Simulate until the ball dies
-        while state.player_positions[player_id] == state.ball_position:
+        while check_hit_success(
+            state.player_positions[player_id],
+            state.ball_position,
+        ):
             player_id = 1 - player_id
-            current_state = copy.deepcopy(state)
+            # current_state = copy.deepcopy(state)
 
             action = self.players[player_id].choose_action(state)
             self.update_history(player_id, state, action)
@@ -152,7 +167,7 @@ class TennisSimulator(object):
             # collect s, a, r for the current player
             # s (player's position, ball position, opponent hit type)
             # a (player's new position, ball hit type)
-            self.players[player_id].update_policy(current_state, copy.deepcopy(action), self.reward[player_id], None)
+            # self.players[player_id].update_policy(current_state, copy.deepcopy(action), self.reward[player_id], None)
 
         # When a player fails to get to the ball position,
         # The opponent wins the point

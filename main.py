@@ -3,8 +3,12 @@ import argparse
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from players import DefaultPlayer, QLearningPlayer, OnlineQLearningPlayer
+from players import DefaultPlayer#, QLearningPlayer, OnlineQLearningPlayer
 from simulator import TennisSimulator
+from utils import (
+    DISTANCE_LOOKUP_TABLE_DJOKOVIC,
+    DIR_CHANGE_LOOKUP_TABLE_DJOKOVIC,
+)
 
 
 # TODO(@tchang): Definitely move this to another place. (Maybe utils.py?)
@@ -59,7 +63,8 @@ def main(args):
                     player_id=player_id,
                     first_serve_success_rate=0.6,
                     second_serve_success_rate=0.8,
-                    position_lookup_table=position_lookup_table,
+                    distance_lookup_table=DISTANCE_LOOKUP_TABLE_DJOKOVIC,
+                    dir_change_lookup_table=DIR_CHANGE_LOOKUP_TABLE_DJOKOVIC,
                 )
             )
         elif player_type == "q_learning":

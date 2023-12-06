@@ -1,12 +1,12 @@
 import sys
-from typing import Dict
+from typing import Dict, Tuple
 
 import numpy as np
 import pickle
 
 sys.path.append("../")
 from .base_player import BasePlayer
-from utils import Action, State, RECEIVE_HIT_TYPES, POSITIONS
+from utils import Action, State, RECEIVE_HIT_TYPES, COURT_BBOX
 from .action_chooser import position_table
 
 class DefaultPlayer(BasePlayer):
@@ -16,88 +16,75 @@ class DefaultPlayer(BasePlayer):
         player_id: int,
         first_serve_success_rate: float,
         second_serve_success_rate: float,
-        position_lookup_table: Dict[str, Dict[str, float]],
+        distance_lookup_table: Dict[str, Tuple[float, float]],
+        dir_change_lookup_table: Dict[str, Tuple[float, float]],
     ):
         super().__init__(
             player_id,
             first_serve_success_rate,
             second_serve_success_rate,
         )
-        self.position_lookup_table = position_lookup_table
+        self.distance_lookup_table = distance_lookup_table
+        self.dir_change_lookup_table = dir_change_lookup_table
 
     def update_state(self, current_state: State, action: Action) -> State:
+        # ======== Determine player_positions ======== #
         player_positions = current_state.player_positions
         player_movement = action.player_movement
         # Stochastic outcome of player_movement
-        player_positions[self.player_id] = np.random.choice(
-            POSITIONS,
-            p=list(self.position_lookup_table[player_movement].values())
+        player_positions[self.player_id] = np.random.normal(
+            loc=player_movement,
+            # Assign a larger std if the targeted position is far away
+            # from the current position
+            scale=np.abs(
+                player_movement - player_positions[self.player_id]
+            ) / 3,
         )
 
-        # Determine ball_position
+        # ======== Determine ball_position/direction ======== #
         hitter_hit_type = current_state.hitter_hit_type
         ball_position = current_state.ball_position
-        # A serve can only be in a certain position
-        if hitter_hit_type == "forehand_serve":
-            ball_position = 'T' + ball_position[1]
-        # A volley results in a slower ball
-        if "volley" in hitter_hit_type:
-            ball_position = 'T' + ball_position[1]
-        # Stochastic outcome of return
-        if "return" in hitter_hit_type:
-            ball_position = ball_position[0] + np.random.choice(['L', 'R'])
-        # Apply overall stochasticity
-        if hitter_hit_type != "forehand_serve":
-            ball_position = np.random.choice(
-                POSITIONS,
-                p=list(self.position_lookup_table[ball_position].values())
-            )
+        ball_direction = current_state.ball_direction
 
+        distance = np.random.normal(
+            *self.distance_lookup_table[hitter_hit_type]
+        )
+        dir_change = np.random.normal(
+            *self.dir_change_lookup_table[hitter_hit_type]
+        )
+        # Apply the change of direction
+        ball_direction = ball_direction + dir_change
+        # Apply the displacement, and flip the coordinate
+        theta = np.deg2rad(ball_direction)
+        displacement = distance * np.array([np.cos(theta), np.sin(theta)])
+        ball_position = COURT_BBOX - (ball_position + displacement)
+        # Flip the direction coordinate and wrap the angle
+        ball_direction += 180
+        if ball_direction >= 360:
+            ball_direction -= 360
+        elif ball_direction < 0:
+            ball_direction += 360
+        
         next_state = State(
             player_positions=player_positions,
             hitter_hit_type=action.hit_type,
             ball_position=ball_position,
+            ball_direction=ball_direction,
         )
         return next_state
 
     def choose_action(self, state: State) -> Action:
         """Chooses an action based on the current state."""
-        # Load the encoder from the file using pickle
-        with open('model/ordinal_encoder.pkl', 'rb') as encoder_file:
-            loaded_ordinal_encoder = pickle.load(encoder_file)
-
-        # Load the encoder from the file using pickle
-        with open('model/label_encoder.pkl', 'rb') as encoder_file:
-            loaded_label_encoder = pickle.load(encoder_file)
-        with open('model/label_encoder_action.pkl', 'rb') as encoder_file:
-            loaded_label_encoder_action = pickle.load(encoder_file)
-
-        # Load the kNN model from the file using pickle
-        with open('model/knn_model.pkl', 'rb') as model_file:
-            loaded_knn_model = pickle.load(model_file)
-        with open('model/knn_model_action.pkl', 'rb') as model_file:
-            loaded_knn_model_action = pickle.load(model_file)
-        
-        state_input = loaded_ordinal_encoder.transform([[state.ball_position, state.player_positions[self.player_id], state.hitter_hit_type]])
-
-        # add exploration
-        if np.random.uniform() < 0.1:
-            hit_type = np.random.choice(RECEIVE_HIT_TYPES)
-        else:
-            hit_type = loaded_label_encoder.inverse_transform(loaded_knn_model.predict(state_input))[0]
-        # When the ball to return is a serve, it goes to a specific location.
-        # For example, if the server serves the ball at "BL", the ball has to
-        # go "TL" at the other side of the court. So the only reasonable
-        # movement to pick here for the player is "TL".
+        # Randomly pick a hit type
+        hit_type = np.random.choice(RECEIVE_HIT_TYPES)
         if state.hitter_hit_type == "forehand_serve":
-            if state.ball_position == "BL":
-                player_movement = "TL"
-            elif state.ball_position == "BR":
-                player_movement = "TR"
-            else:
-                player_movement = np.random.choice(POSITIONS)
+            player_movement = np.copy(state.player_positions[self.player_id])
         else:
-            player_movement_idx = loaded_label_encoder_action.inverse_transform(loaded_knn_model_action.predict(state_input))[0]
-            player_movement = position_table[player_movement_idx]
+            # Brainlessly mirror the current position according to
+            # the center service line
+            player_movement = np.array([
+                COURT_BBOX[0] - state.player_positions[self.player_id][0],
+                state.player_positions[self.player_id][1],
+            ])
         action = Action(hit_type=hit_type, player_movement=player_movement)
         return action
