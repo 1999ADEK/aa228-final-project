@@ -11,9 +11,13 @@ python players/action_chooser.py
 ```
 The resulting model and encoders should be stored under `model/`.
 
-### Simulate a Match
-**TODO:** Add description ...?
+### Run Simulation
 
+To simulate tennis matches, run
+```bash
+python main.py
+  -n 100 \ # Number of matches to simulate
+  -p0 default \ # Player type of player 0
+  -p1 default \ # Player type of player 1
 ```
-python simulate.py
-```
+Please refer to  `main.py` for more details.
