@@ -3,7 +3,7 @@ import argparse
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from players import DefaultPlayer, QLearningPlayer
+from players import DefaultPlayer, QLearningPlayer, OnlineQLearningPlayer
 from simulator import TennisSimulator
 
 
@@ -72,6 +72,7 @@ def main(args):
                     q_learning_policy="model/q_learning.pkl",
                 )
             )
+    
     # Initialize the simulator
     simulator = TennisSimulator(players=players)
 
