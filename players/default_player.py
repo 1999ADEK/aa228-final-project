@@ -102,19 +102,19 @@ class DefaultPlayer(BasePlayer):
 
     def choose_action(self, state: State) -> Action:
         """Chooses an action based on the current state."""
-        with open('model/ordinal_encoder.pkl', 'rb') as encoder_file:
+        with open('model/ordinal_encoder_cont.pkl', 'rb') as encoder_file:
             loaded_ordinal_encoder = pickle.load(encoder_file)
 
         # Load the encoder from the file using pickle
-        with open('model/label_encoder.pkl', 'rb') as encoder_file:
+        with open('model/label_encoder_cont.pkl', 'rb') as encoder_file:
             loaded_label_encoder = pickle.load(encoder_file)
 
         # Load the kNN model from the file using pickle
-        with open('model/knn_model.pkl', 'rb') as model_file:
+        with open('model/knn_model_cont.pkl', 'rb') as model_file:
             loaded_knn_model = pickle.load(model_file)
-        with open('model/knn_model_action_x.pkl', 'rb') as model_file:
+        with open('model/knn_model_action_x_cont.pkl', 'rb') as model_file:
             loaded_knn_model_action_x = pickle.load(model_file)
-        with open('model/knn_model_action_y.pkl', 'rb') as model_file:
+        with open('model/knn_model_action_y_cont.pkl', 'rb') as model_file:
             loaded_knn_model_action_y = pickle.load(model_file)
 
         # Flip the ball position to the other side of the court

@@ -100,19 +100,19 @@ def main():
     # Save the encoders and model
     import pickle
 
-    with open('model/ordinal_encoder.pkl', 'wb') as encoder_file:
+    with open('model/ordinal_encoder_cont.pkl', 'wb') as encoder_file:
         pickle.dump(ordinal_encoder, encoder_file)
 
-    with open('model/label_encoder.pkl', 'wb') as encoder_file:
+    with open('model/label_encoder_cont.pkl', 'wb') as encoder_file:
         pickle.dump(label_encoder_hit_type, encoder_file)
 
-    with open('model/knn_model.pkl', 'wb') as model_file:
+    with open('model/knn_model_cont.pkl', 'wb') as model_file:
         pickle.dump(knn_classifier, model_file)
 
-    with open('model/knn_model_action_x.pkl', 'wb') as model_file:
+    with open('model/knn_model_action_x_cont.pkl', 'wb') as model_file:
         pickle.dump(knn_classifier_action_x, model_file)
 
-    with open('model/knn_model_action_y.pkl', 'wb') as model_file:
+    with open('model/knn_model_action_y_cont.pkl', 'wb') as model_file:
         pickle.dump(knn_classifier_action_y, model_file)
 
 if __name__ == "__main__":
