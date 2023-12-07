@@ -7,9 +7,8 @@ import pickle
 sys.path.append("../")
 from .base_player import BasePlayer
 from utils import (
-    Action, State, RECEIVE_HIT_TYPES, COURT_BBOX, POS_CENTER_SERVICE_LINE
+    Action, State, RECEIVE_HIT_TYPES, COURT_BBOX, POS_CENTER_SERVICE_LINE, COURT_WIDTH, POS_NET
 )
-from .action_chooser import position_table
 
 
 def wrap_angle(theta):
@@ -103,16 +102,40 @@ class DefaultPlayer(BasePlayer):
 
     def choose_action(self, state: State) -> Action:
         """Chooses an action based on the current state."""
-        # Randomly pick a hit type
-        hit_type = np.random.choice(RECEIVE_HIT_TYPES)
+        with open('model/ordinal_encoder.pkl', 'rb') as encoder_file:
+            loaded_ordinal_encoder = pickle.load(encoder_file)
+
+        # Load the encoder from the file using pickle
+        with open('model/label_encoder.pkl', 'rb') as encoder_file:
+            loaded_label_encoder = pickle.load(encoder_file)
+
+        # Load the kNN model from the file using pickle
+        with open('model/knn_model.pkl', 'rb') as model_file:
+            loaded_knn_model = pickle.load(model_file)
+        with open('model/knn_model_action_x.pkl', 'rb') as model_file:
+            loaded_knn_model_action_x = pickle.load(model_file)
+        with open('model/knn_model_action_y.pkl', 'rb') as model_file:
+            loaded_knn_model_action_y = pickle.load(model_file)
+
+        # Flip the ball position to the other side of the court
+        input_ball_x = COURT_WIDTH - state.ball_position[0]
+        input_ball_y = POS_NET + (POS_NET - state.ball_position[1])
+
+        # Construct input based on the flipped ball position
+        state_input = np.array([input_ball_x,input_ball_y]  + list(state.player_positions[self.player_id])+ list(loaded_ordinal_encoder.transform([[state.hitter_hit_type]])[0])).reshape(1, -1)
+
+        hit_type = loaded_label_encoder.inverse_transform(loaded_knn_model.predict(state_input))[0]
+        # Not sure if we want to change this
         if state.hitter_hit_type == "forehand_serve":
             player_movement = np.copy(state.player_positions[self.player_id])
         else:
-            # Brainlessly mirror the current position according to
-            # the center service line
+            # Select player position based on the output from the kNN model
+            player_x = loaded_knn_model_action_x.predict(state_input)[0]
+            player_y = loaded_knn_model_action_y.predict(state_input)[0]
+
             player_movement = np.array([
-                COURT_BBOX[0] - state.player_positions[self.player_id][0],
-                state.player_positions[self.player_id][1],
+                player_x,
+                player_y,
             ])
         action = Action(hit_type=hit_type, player_movement=player_movement)
         return action
