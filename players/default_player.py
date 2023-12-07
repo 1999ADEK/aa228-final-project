@@ -122,20 +122,17 @@ class DefaultPlayer(BasePlayer):
         input_ball_y = POS_NET + (POS_NET - state.ball_position[1])
 
         # Construct input based on the flipped ball position
-        state_input = np.array([input_ball_x,input_ball_y]  + list(state.player_positions[self.player_id])+ list(loaded_ordinal_encoder.transform([[state.hitter_hit_type]])[0])).reshape(1, -1)
+        state_input = np.array([input_ball_x,input_ball_y]  + list(state.player_positions[self.player_id]) \
+                               + [state.ball_direction] + list(loaded_ordinal_encoder.transform([[state.hitter_hit_type]])[0])).reshape(1, -1)
 
         hit_type = loaded_label_encoder.inverse_transform(loaded_knn_model.predict(state_input))[0]
-        # Not sure if we want to change this
-        if state.hitter_hit_type == "forehand_serve":
-            player_movement = np.copy(state.player_positions[self.player_id])
-        else:
-            # Select player position based on the output from the kNN model
-            player_x = loaded_knn_model_action_x.predict(state_input)[0]
-            player_y = loaded_knn_model_action_y.predict(state_input)[0]
+        # Select player position based on the output from the kNN model
+        player_x = loaded_knn_model_action_x.predict(state_input)[0]
+        player_y = loaded_knn_model_action_y.predict(state_input)[0]
 
-            player_movement = np.array([
-                player_x,
-                player_y,
-            ])
+        player_movement = np.array([
+            player_x,
+            player_y,
+        ])
         action = Action(hit_type=hit_type, player_movement=player_movement)
         return action

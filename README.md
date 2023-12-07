@@ -14,7 +14,7 @@ python players/action_chooser.py
 The resulting model and encoders should be stored under `model/`.
 
 #### Continuous Action Chooser
-The current strategy for choosing an action is designed in `players/continuous_action_chooser.py`. It uses a k-NN that includes the information on `'hitter_x', 'hitter_y', 'receiver_x', 'receiver_y', 'opponent_hit_type', 'opponent_hit_type'` to predict `player_hit_type, player_move_x, player_move_y` using 3 separate kNNs.
+The current strategy for choosing an action is designed in `players/continuous_action_chooser.py`. It uses a k-NN that includes the information on `'hitter_x', 'hitter_y', 'receiver_x', 'receiver_y', 'change_ball_dir', 'opponent_hit_type'` to predict `player_hit_type, player_move_x, player_move_y` using 3 separate kNNs.
 
 To get the k-NNs and the associated encoders, run
 ```
