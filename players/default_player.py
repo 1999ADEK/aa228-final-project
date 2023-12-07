@@ -6,7 +6,9 @@ import pickle
 
 sys.path.append("../")
 from .base_player import BasePlayer
-from utils import Action, State, RECEIVE_HIT_TYPES, COURT_BBOX
+from utils import (
+    Action, State, RECEIVE_HIT_TYPES, COURT_BBOX, POS_CENTER_SERVICE_LINE
+)
 from .action_chooser import position_table
 
 class DefaultPlayer(BasePlayer):
@@ -49,11 +51,23 @@ class DefaultPlayer(BasePlayer):
         distance = np.random.normal(
             *self.distance_lookup_table[hitter_hit_type]
         )
+        # Ball directions will be different when served at BL and BR,
+        # so we need to use different distributions in the lookup table
+        if hitter_hit_type == "forehand_serve":
+            if ball_position[0] < POS_CENTER_SERVICE_LINE:
+                hitter_hit_type += "_BL"
+            else:
+                hitter_hit_type += "_BR"
         dir_change = np.random.normal(
             *self.dir_change_lookup_table[hitter_hit_type]
         )
         # Apply the change of direction
-        ball_direction = ball_direction + dir_change
+        # When the incoming ball is in this direction: ↘
+        if ball_direction > 270 or ball_direction == 0:
+            ball_direction = ball_direction + dir_change
+        # When the incoming ball is in this direction: ↙
+        else:
+            ball_direction = ball_direction - dir_change
         # Apply the displacement, and flip the coordinate
         theta = np.deg2rad(ball_direction)
         displacement = distance * np.array([np.cos(theta), np.sin(theta)])

@@ -85,27 +85,28 @@ DISTANCE_LOOKUP_TABLE_NADAL = {
 
 # Store the stats of the change of direction of each ball hit type
 # Each tuple is (mean, std) of theta
-# TODO: model the distributions of returns differently
 DIR_CHANGE_LOOKUP_TABLE_DJOKOVIC = {
-    "forehand_serve":   (94.2420821140381,   9.785480383292212),
-    "forehand_slice":   (164.4665546322629,  16.02752807290332),
-    "forehand_topspin": (169.93025509790778, 24.009030617197666),
-    "forehand_return":  (71.8612373555223,   86.40281254294233),
-    "backhand_slice":   (184.9273043652371,  12.395057410735312),
-    "backhand_topspin": (180.36870683620108, 44.63281044368173),
-    "backhand_return":  (139.70907346396416, 84.628870006565),
-    "backhand_volley":  (189.29977089966653, 5.9040864208681185),
+    "forehand_serve_BL": (84.7609521921382,   3.6728556716820324),
+    "forehand_serve_BR": (102.80568333381865, 3.9411038960983955),
+    "forehand_slice":    (160.1336132600564,  10.17331111384927),
+    "forehand_topspin":  (162.98446269675492, 10.936658778350614),
+    "forehand_return":   (164.38970185833824, 6.0839754820840115),
+    "backhand_slice":    (168.94215504380162, 7.459211851649383),
+    "backhand_topspin":  (163.25766571689394, 8.984303687582587),
+    "backhand_return":   (161.52502237036225, 8.079587616336017),
+    "backhand_volley":   (170.70022910033347, 5.9040864208681185),
 }
 
 DIR_CHANGE_LOOKUP_TABLE_NADAL = {
-    "forehand_serve":   (89.02934760971407,  9.932171255137026),
-    "forehand_slice":   (175.08623175454207, 12.175953063846165),
-    "forehand_topspin": (180.85918357811315, 37.62348309739396),
-    "forehand_return":  (91.84638291788094,  93.1248672008286),
-    "backhand_slice":   (169.74230324483685, 15.146026240544616),
-    "backhand_topspin": (166.64443659556468, 26.554311944724848),
-    "backhand_return":  (106.09981261159317, 80.2898965037309),
-    "backhand_volley":  (168.47587585685906, 17.514677712715383),
+    "forehand_serve_BL": (97.32311570444048,  3.388529183939932),
+    "forehand_serve_BR": (89.02934760971407,  9.932171255137026),
+    "forehand_slice":    (169.0625103963013,  7.264315009141505),
+    "forehand_topspin":  (163.45810701642745, 9.068513875551627),
+    "forehand_return":   (159.6367988303698,  3.4090026603328747),
+    "backhand_slice":    (165.30476329660706, 10.89368954172109),
+    "backhand_topspin":  (164.22586112480013, 11.066443253826453),
+    "backhand_return":   (161.44634334320196, 12.996293405236504),
+    "backhand_volley":   (162.48532228728465, 11.524124143140957),
 }
 
 
