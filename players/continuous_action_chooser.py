@@ -34,28 +34,16 @@ def main():
                 
                 cur_ball_dir = data.loc[i, "ball_dir"].replace("[", "").replace("]", "").split()
                 cur_ball_dir = [float(dir) for dir in cur_ball_dir]
-                if isserve:
-                    dv = cur_ball_dir
-                    if hitter_y > POS_NET:
-                        dv = [-1* dir for dir in dv]
+                dv = cur_ball_dir
+                if hitter_y > POS_NET:
+                    dv = [-1* dir for dir in dv]
 
-                    dtheta = np.rad2deg(np.arctan2(dv[1], dv[0]))
-                    clean_data.loc[i, "change_ball_dir"] = dtheta
-                else:
-                    prev_ball_dir = data.loc[i-1, "ball_dir"].replace("[", "").replace("]", "").split()
-                    prev_ball_dir = [float(dir) for dir in prev_ball_dir]
-                    if hitter_y < POS_NET:
-                        v0 = prev_ball_dir
-                        v1 = cur_ball_dir
-                    else:
-                        v0 = [-1* dir for dir in prev_ball_dir]
-                        v1 = [-1* dir for dir in cur_ball_dir]
-                    
-                    theta0 = np.arctan2(v0[1], v0[0])
-                    theta1 = np.arctan2(v1[1], v0[0])
-
-                    dtheta = np.rad2deg(theta1 - theta0)
-                    clean_data.loc[i, "change_ball_dir"] = dtheta
+                dtheta = np.rad2deg(np.arctan2(dv[1], dv[0]))
+                print("Hitter:", data.loc[i, "hitter"], "Receiver:", data.loc[i, "receiver"])
+                print("Ball dir:", cur_ball_dir)
+                print(dtheta)
+                print("====================================")
+                clean_data.loc[i, "cur_ball_dir"] = dtheta
 
     clean_data = clean_data.dropna()
     for index in clean_data.index:
@@ -66,7 +54,7 @@ def main():
             clean_data.loc[index, 'receiver_y'] = POS_NET + (POS_NET - clean_data.loc[index, 'receiver_y'])
 
     # Get the state information of "ball_position"("hitter_x", "hitter_y") and "player_positions"("receiver_x", "receiver_y")
-    action_info = clean_data[['hitter_x', 'hitter_y', 'receiver_x', 'receiver_y', "change_ball_dir"]].copy()
+    action_info = clean_data[['hitter_x', 'hitter_y', 'receiver_x', 'receiver_y', "cur_ball_dir"]].copy()
 
     # Combine "type" and "stroke" as opponent hit type
     action_info['opponent_hit_type'] = clean_data['stroke'] + "_" + clean_data['type']
@@ -84,7 +72,7 @@ def main():
 
     # Extract features (X) and labels (y)
     ordinal_encoder = OrdinalEncoder()
-    X = action_info[['hitter_x', 'hitter_y', 'receiver_x', 'receiver_y', "change_ball_dir", 'opponent_hit_type']]
+    X = action_info[['hitter_x', 'hitter_y', 'receiver_x', 'receiver_y', "cur_ball_dir", 'opponent_hit_type']]
     X["opponent_hit_type"] = ordinal_encoder.fit_transform(X[["opponent_hit_type"]])
 
     label_encoder_hit_type = LabelEncoder()
