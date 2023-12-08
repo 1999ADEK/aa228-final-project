@@ -60,7 +60,7 @@ class TennisSimulator(object):
                     dir_change_lookup_table=DIR_CHANGE_LOOKUP_TABLE_DJOKOVIC,
                 ),
                 DefaultPlayer(
-                    player_id=0,
+                    player_id=1,
                     first_serve_success_rate=0.6,
                     second_serve_success_rate=0.8,
                     distance_lookup_table=DISTANCE_LOOKUP_TABLE_DJOKOVIC,
