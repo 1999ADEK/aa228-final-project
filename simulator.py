@@ -139,6 +139,7 @@ class TennisSimulator(object):
                 return 1 - serve_id
 
         # Initial state
+        ball_direction = server.get_serve_direction(serve_position)
         # The serve_position is hard coded for now
         serve_position = np.array([
             POS_CENTER_SERVICE_LINE + (1.0 if serve_position == "BR" else -1.0),
@@ -148,7 +149,7 @@ class TennisSimulator(object):
             player_positions=[serve_position, serve_position],
             hitter_hit_type="forehand_serve",
             ball_position=serve_position,
-            ball_direction=0,
+            ball_direction=ball_direction,
         )
 
         player_id = serve_id

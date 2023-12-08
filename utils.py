@@ -125,7 +125,7 @@ class State(NamedTuple):
     ball_direction: float
         The direction of the tennis ball, represented by the direction
         angle.
-        Note that this is the direction of the ball BEFORE the hitter
+        Note that this is the direction of the ball AFTER the hitter
         hits the ball.
     """
     player_positions: np.ndarray

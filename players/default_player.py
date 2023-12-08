@@ -11,6 +11,15 @@ from utils import (
 )
 from .action_chooser import position_table
 
+
+def wrap_angle(theta):
+    """Wraps angle to 0 <= theta < 360 degree."""
+    if theta >= 360:
+        theta -= 360
+    elif theta < 0:
+        theta += 360
+    return theta
+
 class DefaultPlayer(BasePlayer):
     """A class used to represent the default tennis player."""
 
@@ -29,7 +38,19 @@ class DefaultPlayer(BasePlayer):
         self.distance_lookup_table = distance_lookup_table
         self.dir_change_lookup_table = dir_change_lookup_table
 
+    def get_serve_direction(self, serve_position) -> float:
+        """Determines the ball direction of a serve."""
+
+        # Ball directions will be different when served at BL and BR,
+        # so we need to use different distributions in the lookup table
+        dir_change = np.random.normal(
+            *self.dir_change_lookup_table[f"forehand_serve_{serve_position}"]
+        )
+        return dir_change
+    
     def update_state(self, current_state: State, action: Action) -> State:
+        """Updates the state based on current state and action."""
+
         # ======== Determine player_positions ======== #
         player_positions = current_state.player_positions
         player_movement = action.player_movement
@@ -43,7 +64,7 @@ class DefaultPlayer(BasePlayer):
             ) / 3,
         )
 
-        # ======== Determine ball_position/direction ======== #
+        # ======== Determine ball_position ======== #
         hitter_hit_type = current_state.hitter_hit_type
         ball_position = current_state.ball_position
         ball_direction = current_state.ball_direction
@@ -51,16 +72,18 @@ class DefaultPlayer(BasePlayer):
         distance = np.random.normal(
             *self.distance_lookup_table[hitter_hit_type]
         )
-        # Ball directions will be different when served at BL and BR,
-        # so we need to use different distributions in the lookup table
-        if hitter_hit_type == "forehand_serve":
-            if ball_position[0] < POS_CENTER_SERVICE_LINE:
-                hitter_hit_type += "_BL"
-            else:
-                hitter_hit_type += "_BR"
+        # Apply the displacement, and flip the coordinate
+        theta = np.deg2rad(ball_direction)
+        displacement = distance * np.array([np.cos(theta), np.sin(theta)])
+        ball_position = COURT_BBOX - (ball_position + displacement)
+
+        # ======== Determine ball_position ======== #
         dir_change = np.random.normal(
-            *self.dir_change_lookup_table[hitter_hit_type]
+            *self.dir_change_lookup_table[action.hit_type]
         )
+        # Flip the direction coordinate
+        ball_direction = wrap_angle(ball_direction + 180)
+        
         # Apply the change of direction
         # When the incoming ball is in this direction: ↘
         if ball_direction > 270 or ball_direction == 0:
@@ -68,16 +91,7 @@ class DefaultPlayer(BasePlayer):
         # When the incoming ball is in this direction: ↙
         else:
             ball_direction = ball_direction - dir_change
-        # Apply the displacement, and flip the coordinate
-        theta = np.deg2rad(ball_direction)
-        displacement = distance * np.array([np.cos(theta), np.sin(theta)])
-        ball_position = COURT_BBOX - (ball_position + displacement)
-        # Flip the direction coordinate and wrap the angle
-        ball_direction += 180
-        if ball_direction >= 360:
-            ball_direction -= 360
-        elif ball_direction < 0:
-            ball_direction += 360
+        ball_direction = wrap_angle(ball_direction)
         
         next_state = State(
             player_positions=player_positions,
