@@ -46,6 +46,7 @@ def main():
 
     clean_data = clean_data.dropna()
     for index in clean_data.index:
+        # Flip the ball position to the other side of the court if player not on the current side
         if clean_data.loc[index, 'receiver_y'] > POS_NET:
             clean_data.loc[index, 'receiver_x'] =  COURT_WIDTH - clean_data.loc[index, 'receiver_x']
             clean_data.loc[index, 'receiver_y'] = COURT_LENGTH - clean_data.loc[index, 'receiver_y']
@@ -63,16 +64,10 @@ def main():
         next_index = index + 1
         if next_index < len(data):
             action_info.loc[index, "player_hit_type"] = data.loc[next_index, 'stroke'] + "_" + data.loc[next_index, 'type']
-            if data.loc[next_index, 'hitter_y'] < POS_NET:
-                action_info.loc[index, "player_move_x"] = data.loc[next_index, "hitter_x"]
-                action_info.loc[index, "player_move_y"] = data.loc[next_index, "hitter_y"]
-            else:
-                action_info.loc[index, "player_move_x"] = COURT_WIDTH - data.loc[next_index, "hitter_x"]
-                action_info.loc[index, "player_move_y"] = COURT_LENGTH - data.loc[next_index, "hitter_y"]
+            action_info.loc[index, "ball_dist"] = ((data.loc[index, "hitter_x"]-data.loc[next_index, "hitter_x"])**2 + (data.loc[index, "hitter_y"]-data.loc[next_index, "hitter_y"])**2)**0.5
 
     # Drop the rows not in HIT_TYPES
     action_info = action_info[action_info['opponent_hit_type'].isin(HIT_TYPES) & action_info['player_hit_type'].isin(HIT_TYPES)]
-    print(action_info)
 
     # Extract features (X) and labels (y)
     ordinal_encoder = OrdinalEncoder()
@@ -82,47 +77,39 @@ def main():
     label_encoder_hit_type = LabelEncoder()
     y = action_info['player_hit_type']
     y = label_encoder_hit_type.fit_transform(y)
-
-    y_player_x = action_info['player_move_x']
-    y_player_y = action_info['player_move_y']
+    y_ball_dist = action_info['ball_dist']
 
     # Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    X_train_action_x, X_test_action_x, y_train_action_x, y_test_action_x = train_test_split(X, y_player_x, test_size=0.2, random_state=42)
-    X_train_action_y, X_test_action_y, y_train_action_y, y_test_action_y = train_test_split(X, y_player_y, test_size=0.2, random_state=42)
+    X_train_dist, X_test_dist, y_train_dist, y_test_dist = train_test_split(X, y_ball_dist, test_size=0.2, random_state=42)
 
     # Create a kNN classifier with a specified number of neighbors (k)
-    k = 10 # The number of neighbors
+    k = 20 # The number of neighbors
     knn_classifier = KNeighborsClassifier(n_neighbors=k)
-    knn_classifier_action_x = KNeighborsRegressor(n_neighbors=k)
-    knn_classifier_action_y = KNeighborsRegressor(n_neighbors=k)
+    knn_classifier_dist = KNeighborsRegressor(n_neighbors=k)
 
     # Train the classifier on the training data
     knn_classifier.fit(X_train, y_train)
-    knn_classifier_action_x.fit(X_train_action_x, y_train_action_x)
-    knn_classifier_action_y.fit(X_train_action_y, y_train_action_y)
+    knn_classifier_dist.fit(X_train_dist, y_train_dist)
 
     # Make predictions on the test data
     predictions_hit_type = knn_classifier.predict(X_test)
-    predictions_move_action_x = knn_classifier_action_x.predict(X_test_action_x)
-    predictions_move_action_y = knn_classifier_action_y.predict(X_test_action_y)
+    predictions_dist = knn_classifier_dist.predict(X_test_dist)
     pred_hit_types = label_encoder_hit_type.inverse_transform(predictions_hit_type)
 
     # Evaluate the accuracy of the model
     total_position_error_x = 0
-    total_position_error_y = 0
     accuracy = accuracy_score(y_test, predictions_hit_type)
-    for i in range(len(predictions_move_action_x)):
-        print(f"Predicted move: ({predictions_move_action_x[i]}, {predictions_move_action_y[i]})")
-        print(f"Actual move: ({list(y_test_action_x)[i]}, {list(y_test_action_y)[i]})")
-        total_position_error_x += predictions_move_action_x[i] - list(y_test_action_x)[i]
-        total_position_error_y += predictions_move_action_y[i] - list(y_test_action_y)[i]
+    for i in range(len(predictions_dist)):
+        print(f"Predicted move: ({predictions_dist[i]})")
+        print(f"Actual move: ({list(y_test_dist)[i]})")
+        total_position_error_x += abs(predictions_dist[i] - list(y_test_dist)[i])
         print(f"Predicted hit type: {pred_hit_types[i]}")
         print(f"Actual hit type: {list(y_test)[i]}")
 
     print(f"Accuracy: {accuracy * 100:.2f}%")
-    print(f"Average Manhattan Distance Difference on X: {total_position_error_x / len(predictions_move_action_x)}")
-    print(f"Average Manhattan Distance Difference on Y: {total_position_error_y / len(predictions_move_action_y)}")
+    print(f"Average Manhattan Distance Difference on X: {total_position_error_x / len(predictions_dist)}")
+
     # Save the encoders and model
     import pickle
 
@@ -135,11 +122,9 @@ def main():
     with open('model/knn_model_cont.pkl', 'wb') as model_file:
         pickle.dump(knn_classifier, model_file)
 
-    with open('model/knn_model_action_x_cont.pkl', 'wb') as model_file:
-        pickle.dump(knn_classifier_action_x, model_file)
+    with open('model/knn_model_dist_cont.pkl', 'wb') as model_file:
+        pickle.dump(knn_classifier_dist, model_file)
 
-    with open('model/knn_model_action_y_cont.pkl', 'wb') as model_file:
-        pickle.dump(knn_classifier_action_y, model_file)
 
 if __name__ == "__main__":
     main()

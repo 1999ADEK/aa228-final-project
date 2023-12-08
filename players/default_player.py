@@ -60,7 +60,7 @@ class DefaultPlayer(BasePlayer):
             # from the current position
             scale=np.abs(
                 player_movement - player_positions[self.player_id]
-            ) / 3,
+            ) / 10,
         )
 
         # ======== Determine ball_position ======== #
@@ -71,6 +71,7 @@ class DefaultPlayer(BasePlayer):
         distance = np.random.normal(
             *self.distance_lookup_table[hitter_hit_type]
         )
+
         # Apply the displacement, and flip the coordinate
         theta = np.deg2rad(ball_direction)
         displacement = distance * np.array([np.cos(theta), np.sin(theta)])
@@ -112,10 +113,8 @@ class DefaultPlayer(BasePlayer):
         # Load the kNN model from the file using pickle
         with open('model/knn_model_cont.pkl', 'rb') as model_file:
             loaded_knn_model = pickle.load(model_file)
-        with open('model/knn_model_action_x_cont.pkl', 'rb') as model_file:
-            loaded_knn_model_action_x = pickle.load(model_file)
-        with open('model/knn_model_action_y_cont.pkl', 'rb') as model_file:
-            loaded_knn_model_action_y = pickle.load(model_file)
+        with open('model/knn_model_dist_cont.pkl', 'rb') as model_file:
+            loaded_knn_model_dist = pickle.load(model_file)
 
         # Flip the ball position to the other side of the court
         input_ball_x = COURT_WIDTH - state.ball_position[0]
@@ -126,13 +125,16 @@ class DefaultPlayer(BasePlayer):
                                + [state.ball_direction] + list(loaded_ordinal_encoder.transform([[state.hitter_hit_type]])[0])).reshape(1, -1)
 
         hit_type = loaded_label_encoder.inverse_transform(loaded_knn_model.predict(state_input))[0]
-        # Select player position based on the output from the kNN model
-        player_x = loaded_knn_model_action_x.predict(state_input)[0]
-        player_y = loaded_knn_model_action_y.predict(state_input)[0]
+        # Select ball distance based on the output from the kNN model
+        ball_dist = loaded_knn_model_dist.predict(state_input)[0]
 
-        player_movement = np.array([
-            player_x,
-            player_y,
-        ])
-        action = Action(hit_type=hit_type, player_movement=player_movement)
+        # Or select ball distance from the hit type lookup table
+        #ball_dist = self.distance_lookup_table[state.hitter_hit_type][0]
+
+        # Apply the displacement, and flip the coordinate
+        theta = np.deg2rad(state.ball_direction)
+        displacement = ball_dist * np.array([np.cos(theta), np.sin(theta)])
+        move_position = COURT_BBOX - (state.ball_position + displacement)
+
+        action = Action(hit_type=hit_type, player_movement=move_position)
         return action
