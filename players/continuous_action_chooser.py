@@ -37,7 +37,6 @@ def main():
                 dv = cur_ball_dir
                 if hitter_y > POS_NET:
                     dv = [-1* dir for dir in dv]
-
                 dtheta = np.rad2deg(np.arctan2(dv[1], dv[0]))
                 print("Hitter:", data.loc[i, "hitter"], "Receiver:", data.loc[i, "receiver"])
                 print("Ball dir:", cur_ball_dir)
@@ -47,11 +46,11 @@ def main():
 
     clean_data = clean_data.dropna()
     for index in clean_data.index:
-        if clean_data.loc[index, 'hitter_y'] > POS_NET:
-            clean_data.loc[index, 'hitter_x'] =  COURT_WIDTH - clean_data.loc[index, 'hitter_x']
-            clean_data.loc[index, 'hitter_y'] = COURT_LENGTH - clean_data.loc[index, 'hitter_y']
-            clean_data.loc[index, 'receiver_x'] = COURT_WIDTH - clean_data.loc[index, 'receiver_x']
-            clean_data.loc[index, 'receiver_y'] = POS_NET + (POS_NET - clean_data.loc[index, 'receiver_y'])
+        if clean_data.loc[index, 'receiver_y'] > POS_NET:
+            clean_data.loc[index, 'receiver_x'] =  COURT_WIDTH - clean_data.loc[index, 'receiver_x']
+            clean_data.loc[index, 'receiver_y'] = COURT_LENGTH - clean_data.loc[index, 'receiver_y']
+            clean_data.loc[index, 'hitter_x'] = COURT_WIDTH - clean_data.loc[index, 'hitter_x']
+            clean_data.loc[index, 'hitter_y'] = POS_NET + (POS_NET - clean_data.loc[index, 'hitter_y'])
 
     # Get the state information of "ball_position"("hitter_x", "hitter_y") and "player_positions"("receiver_x", "receiver_y")
     action_info = clean_data[['hitter_x', 'hitter_y', 'receiver_x', 'receiver_y', "cur_ball_dir"]].copy()
@@ -64,11 +63,16 @@ def main():
         next_index = index + 1
         if next_index < len(data):
             action_info.loc[index, "player_hit_type"] = data.loc[next_index, 'stroke'] + "_" + data.loc[next_index, 'type']
-            action_info.loc[index, "player_move_x"] = data.loc[next_index, "hitter_x"]
-            action_info.loc[index, "player_move_y"] = data.loc[next_index, "hitter_y"]
+            if data.loc[next_index, 'hitter_y'] < POS_NET:
+                action_info.loc[index, "player_move_x"] = data.loc[next_index, "hitter_x"]
+                action_info.loc[index, "player_move_y"] = data.loc[next_index, "hitter_y"]
+            else:
+                action_info.loc[index, "player_move_x"] = COURT_WIDTH - data.loc[next_index, "hitter_x"]
+                action_info.loc[index, "player_move_y"] = COURT_LENGTH - data.loc[next_index, "hitter_y"]
 
     # Drop the rows not in HIT_TYPES
     action_info = action_info[action_info['opponent_hit_type'].isin(HIT_TYPES) & action_info['player_hit_type'].isin(HIT_TYPES)]
+    print(action_info)
 
     # Extract features (X) and labels (y)
     ordinal_encoder = OrdinalEncoder()
