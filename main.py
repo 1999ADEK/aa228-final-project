@@ -26,7 +26,7 @@ def parse_args():
         "--player_0",
         type=str,
         default="default",
-        choices=["default", "q_learning"],
+        choices=["default", "offline_q_learning", "online_q_learning"],
         help="Specify the first player.",
     )
     parser.add_argument(
@@ -34,7 +34,7 @@ def parse_args():
         "--player_1",
         type=str,
         default="default",
-        choices=["default", "q_learning"],
+        choices=["default", "offline_q_learning", "online_q_learning"],
         help="Specify the second player.",
     )
     parser.add_argument(
@@ -62,7 +62,7 @@ def main(args):
                     position_lookup_table=position_lookup_table,
                 )
             )
-        elif player_type == "q_learning":
+        elif player_type == "offline_q_learning":
             players.append(
                 QLearningPlayer(
                     player_id=player_id,
@@ -70,6 +70,17 @@ def main(args):
                     second_serve_success_rate=0.8,
                     position_lookup_table=position_lookup_table,
                     q_learning_policy="model/q_learning.pkl",
+                )
+            )
+        elif player_type == "online_q_learning":
+            players.append(
+                OnlineQLearningPlayer(
+                    player_id=player_id,
+                    first_serve_success_rate=0.6,
+                    second_serve_success_rate=0.8,
+                    position_lookup_table=position_lookup_table,
+                    q_learning_policy="model/online_q_learning.pkl",
+                    is_train=False,
                 )
             )
     

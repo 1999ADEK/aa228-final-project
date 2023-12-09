@@ -57,6 +57,7 @@ def train_single_agent():
             first_serve_success_rate=0.6,
             second_serve_success_rate=0.8,
             position_lookup_table=position_lookup_table,
+            is_train=True,
         ),
         OnlineQLearningPlayer(
             player_id=1,
@@ -92,7 +93,7 @@ def train_single_agent():
             simulator.players[1].is_train = False
 
             count_win = 0
-            for _ in range(20):
+            for _ in range(50):
                 winner, scores = simulator.simulate_match()
                 # print(f"Player {winner} won the match!")
                 # print(f"===== Score Board =====")
@@ -104,7 +105,7 @@ def train_single_agent():
                     count_win += 1
                 simulator.reset()
             
-            win_ratio = count_win * 1.0 / 20
+            win_ratio = count_win * 1.0 / 50
             wins.append(win_ratio)
 
             # resume policy updates

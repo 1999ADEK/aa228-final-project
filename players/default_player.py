@@ -17,6 +17,7 @@ class DefaultPlayer(BasePlayer):
         first_serve_success_rate: float,
         second_serve_success_rate: float,
         position_lookup_table: Dict[str, Dict[str, float]],
+        is_train=False,
     ):
         super().__init__(
             player_id,
@@ -24,6 +25,7 @@ class DefaultPlayer(BasePlayer):
             second_serve_success_rate,
         )
         self.position_lookup_table = position_lookup_table
+        self.is_train = is_train
 
     def update_state(self, current_state: State, action: Action) -> State:
         player_positions = current_state.player_positions
@@ -81,8 +83,9 @@ class DefaultPlayer(BasePlayer):
         state_input = loaded_ordinal_encoder.transform([[state.ball_position, state.player_positions[self.player_id], state.hitter_hit_type]])
 
         # add exploration
-        if np.random.uniform() < 0.1:
+        if self.is_train and np.random.uniform() < 0.1:
             hit_type = np.random.choice(RECEIVE_HIT_TYPES)
+            player_movement = np.random.choice(POSITIONS)
         else:
             hit_type = loaded_label_encoder.inverse_transform(loaded_knn_model.predict(state_input))[0]
         # When the ball to return is a serve, it goes to a specific location.
