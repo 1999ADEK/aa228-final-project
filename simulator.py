@@ -32,7 +32,7 @@ def check_hit_success(player_position: np.ndarray, ball_position: np.ndarray):
             The position of the tennis ball.
     """
     distance = np.linalg.norm(player_position - ball_position)
-    return distance < 1.0
+    return distance < 2
 
 
 class TennisSimulator(object):
@@ -158,6 +158,7 @@ class TennisSimulator(object):
             state.player_positions[player_id],
             state.ball_position,
         ):
+            self.reward[player_id] += 1
             player_id = 1 - player_id
             # current_state = copy.deepcopy(state)
 

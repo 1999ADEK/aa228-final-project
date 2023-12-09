@@ -3,12 +3,19 @@ import argparse
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from players import DefaultPlayer#, QLearningPlayer, OnlineQLearningPlayer
+from players import DefaultPlayer, PPOPlayer
+
 from simulator import TennisSimulator
 from utils import (
     DISTANCE_LOOKUP_TABLE_DJOKOVIC,
     DIR_CHANGE_LOOKUP_TABLE_DJOKOVIC,
+    DISTANCE_LOOKUP_TABLE_NADAL,
+    DIR_CHANGE_LOOKUP_TABLE_NADAL,
 )
+
+import os
+
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 
 # TODO(@tchang): Definitely move this to another place. (Maybe utils.py?)
@@ -30,15 +37,15 @@ def parse_args():
         "--player_0",
         type=str,
         default="default",
-        choices=["default", "q_learning"],
+        choices=["default", "q_learning", "online_ppo"],
         help="Specify the first player.",
     )
     parser.add_argument(
         "-p1",
         "--player_1",
         type=str,
-        default="default",
-        choices=["default", "q_learning"],
+        default="online_ppo",
+        choices=["default", "q_learning", "online_ppo"],
         help="Specify the second player.",
     )
     parser.add_argument(
@@ -67,14 +74,27 @@ def main(args):
                     dir_change_lookup_table=DIR_CHANGE_LOOKUP_TABLE_DJOKOVIC,
                 )
             )
-        elif player_type == "q_learning":
+            """
+            elif player_type == "q_learning":
+                players.append(
+                    QLearningPlayer(
+                        player_id=player_id,
+                        first_serve_success_rate=0.6,
+                        second_serve_success_rate=0.8,
+                        position_lookup_table=position_lookup_table,
+                        q_learning_policy="model/q_learning.pkl",
+                    )
+                )
+            """
+        elif player_type == "online_ppo":
             players.append(
-                QLearningPlayer(
+                PPOPlayer(
                     player_id=player_id,
                     first_serve_success_rate=0.6,
                     second_serve_success_rate=0.8,
-                    position_lookup_table=position_lookup_table,
-                    q_learning_policy="model/q_learning.pkl",
+                    distance_lookup_table=DISTANCE_LOOKUP_TABLE_NADAL,
+                    dir_change_lookup_table=DIR_CHANGE_LOOKUP_TABLE_NADAL,
+                    ppo_model_path="ppo_tennis_1_000",
                 )
             )
     
@@ -104,6 +124,7 @@ def main(args):
             mean_rewards[player_id].append(
                 total_rewards[player_id] / (match_idx + 1)
             )
+        simulator.export_history("tmp.csv")
     print("Simulation done!")
 
     # Plot metrics
