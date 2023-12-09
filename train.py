@@ -50,7 +50,7 @@ def save_policy(policy, prefix="online_q_learning"):
 
 
 
-def train_single_agent():
+def train_single_agent(args):
     players = [
         DefaultPlayer(
             player_id=0,
@@ -66,15 +66,15 @@ def train_single_agent():
             position_lookup_table=position_lookup_table,
             q_learning_policy="",
             is_train=True,
+            c=args.c,
         )
     ]
     simulator = TennisSimulator(players=players)
 
-    ITERS = 1000
     wins = [0]
     best = 0
 
-    for i in range(ITERS):
+    for i in range(args.iters):
         print("Iter ", i)
         # train
         print(simulator.players[1].is_train)
@@ -89,7 +89,7 @@ def train_single_agent():
         simulator.reset()
 
         # test
-        if (i+1) % 50 == 0:
+        if (i+1) % args.log_freq == 0:
             simulator.players[1].is_train = False
 
             count_win = 0
@@ -111,12 +111,12 @@ def train_single_agent():
             # resume policy updates
             simulator.players[1].is_train = True
 
-            if win_ratio > best:
+            if win_ratio >= best:
                 best = win_ratio
                 policy = simulator.players[1].get_best_policy()
                 save_policy(policy)
     
-    x = np.arange(0, ITERS+1, 50)
+    x = np.arange(0, args.iters+1, args.log_freq)
     plt.plot(x, wins)
     plt.show()
 
@@ -200,12 +200,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-multi', action='store_true', help="training multi agent vs single agent")
-    parser.add_argument('-iters', default=1000)
-    parser.add_argument('-log_freq', default=50, help="validation and logging frequency")
+    parser.add_argument('-iters', default=1000, type=int)
+    parser.add_argument('-log_freq', default=50, help="validation and logging frequency", type=int)
+    parser.add_argument('-c', default=1.0, help="exploration param", type=float)
     args = parser.parse_args()
 
     if not args.multi:
-        train_single_agent()
+        train_single_agent(args)
     else:
         train_multi_agents(args)
-    

@@ -26,7 +26,7 @@ def parse_args():
         "--player_0",
         type=str,
         default="default",
-        choices=["default", "offline_q_learning", "online_q_learning"],
+        choices=["default", "offline_q_learning", "online_q_learning", "online_q_learning_p0", "online_q_learning_p1"],
         help="Specify the first player.",
     )
     parser.add_argument(
@@ -34,7 +34,7 @@ def parse_args():
         "--player_1",
         type=str,
         default="default",
-        choices=["default", "offline_q_learning", "online_q_learning"],
+        choices=["default", "offline_q_learning", "online_q_learning", "online_q_learning_p0", "online_q_learning_p1"],
         help="Specify the second player.",
     )
     parser.add_argument(
@@ -83,6 +83,28 @@ def main(args):
                     is_train=False,
                 )
             )
+        elif player_type == "online_q_learning_p0":
+            players.append(
+                OnlineQLearningPlayer(
+                    player_id=player_id,
+                    first_serve_success_rate=0.6,
+                    second_serve_success_rate=0.8,
+                    position_lookup_table=position_lookup_table,
+                    q_learning_policy="q_learning_player_0.pkl",
+                    is_train=False,
+                )
+            )
+        elif player_type == "online_q_learning_p1":
+            players.append(
+                OnlineQLearningPlayer(
+                    player_id=player_id,
+                    first_serve_success_rate=0.6,
+                    second_serve_success_rate=0.8,
+                    position_lookup_table=position_lookup_table,
+                    q_learning_policy="q_learning_player_1.pkl",
+                    is_train=False,
+                )
+            )
     
     # Initialize the simulator
     simulator = TennisSimulator(players=players)
@@ -128,6 +150,8 @@ def main(args):
     plt.legend()
     plt.savefig("mean_reward.png")
     print("Plots saved as winning_rate.png and mean_reward.png")
+
+    print(mean_rewards[0][-1])
 
 if __name__ == "__main__":
     args = parse_args()
