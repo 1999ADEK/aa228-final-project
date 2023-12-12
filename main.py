@@ -94,7 +94,7 @@ def main(args):
                     second_serve_success_rate=0.8,
                     distance_lookup_table=DISTANCE_LOOKUP_TABLE_NADAL,
                     dir_change_lookup_table=DIR_CHANGE_LOOKUP_TABLE_NADAL,
-                    ppo_model_path="ppo_tennis_1_000",
+                    ppo_model_path="ppo_tennis_500_p",
                 )
             )
     
@@ -106,6 +106,7 @@ def main(args):
     mean_rewards = [[] for _ in range(2)]
     num_matches_won = [0, 0]
     total_rewards = [0, 0]
+    total_length = []
 
     print(f"Start simulating {args.num_matches} matches!")
     for match_idx in tqdm(range(args.num_matches)):
@@ -124,9 +125,10 @@ def main(args):
             mean_rewards[player_id].append(
                 total_rewards[player_id] / (match_idx + 1)
             )
+        total_length.append(len(simulator.history["player_1_reward"]))
         simulator.export_history("tmp.csv")
     print("Simulation done!")
-
+    print(f"Average match length: {sum(total_length) / len(total_length)}")
     # Plot metrics
     print("Plotting the metrics.")
 
@@ -134,14 +136,17 @@ def main(args):
     plt.plot(winning_rates[0], label=f"p0: {args.player_0}")
     plt.plot(winning_rates[1], label=f"p1: {args.player_1}")
     plt.legend()
-    plt.savefig("winning_rate.png")
+    plt.savefig("winning_rate_500.png")
 
     plt.clf()
     plt.title("Mean Reward")
     plt.plot(mean_rewards[0], label=f"p0: {args.player_0}")
     plt.plot(mean_rewards[1], label=f"p1: {args.player_1}")
     plt.legend()
-    plt.savefig("mean_reward.png")
+    plt.savefig("mean_reward_500.png")
+    
+    #plt.savefig("combined_graph.png")
+
     print("Plots saved as winning_rate.png and mean_reward.png")
 
 if __name__ == "__main__":

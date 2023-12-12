@@ -128,9 +128,6 @@ class DefaultPlayer(BasePlayer):
         # Select ball distance based on the output from the kNN model
         ball_dist = loaded_knn_model_dist.predict(state_input)[0]
 
-        # Or select ball distance from the hit type lookup table
-        #ball_dist = self.distance_lookup_table[state.hitter_hit_type][0]
-
         # Apply the displacement, and flip the coordinate
         theta = np.deg2rad(state.ball_direction)
         displacement = ball_dist * np.array([np.cos(theta), np.sin(theta)])

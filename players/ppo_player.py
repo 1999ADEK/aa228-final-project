@@ -60,7 +60,7 @@ class PPOPlayer(BasePlayer):
 
     def update_state(self, current_state: State, action: Action) -> State:
         """Updates the state of the player based on the action."""
-        import pdb; pdb.set_trace()
+        
         player_positions = current_state.player_positions
         player_movement = action.player_movement
         # Stochastic outcome of player_movement
@@ -123,6 +123,12 @@ class PPOPlayer(BasePlayer):
         """Chooses an action based on the current state."""
         cur_state = convert_state_to_output(state, self.player_id)
         action, _ = self.model.predict(cur_state, deterministic=True)
-        hit_type = HIT_TYPES[np.argmax(action[2:])]
-        player_movement = action[:2]
-        return Action(hit_type, player_movement)
+        hit_type = HIT_TYPES[np.argmax(action[1:])]
+        ball_displacement = action[0]*(33-2)+2
+        
+        # Apply the displacement, and flip the coordinate
+        theta = np.deg2rad(state.ball_direction)
+        displacement = ball_displacement * np.array([np.cos(theta), np.sin(theta)])
+        move_position = COURT_BBOX - (state.ball_position + displacement)
+
+        return Action(hit_type, move_position)

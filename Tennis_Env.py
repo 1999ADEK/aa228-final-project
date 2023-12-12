@@ -47,8 +47,9 @@ class TennisEnv(gym.Env):
         super(TennisEnv, self).__init__()
         # (player x, player y, ball x, ball y, ball direction, ball hit type)
         self.observation_space = spaces.Box(low = np.array([-2, -3, -2, -3, 0, 0, 0, 0, 0, 0, 0, 0, 0]), high = np.array([13, POS_NET, 13, POS_NET, 180, 1, 1, 1, 1, 1, 1, 1, 1]), dtype = np.float64)
-        # (player x, player y, hit type * 8)
-        self.action_space = spaces.Box(low = np.array([-2, -3, 0, 0, 0, 0, 0, 0, 0, 0]), high = np.array([13, POS_NET, 1, 1, 1, 1, 1, 1, 1, 1]), dtype = np.float64)
+        # (ball displacement, hit type * 8)
+        # TRICK: the ball displacement is normalized to [0, 1], and mapped to [2, 33] during step()
+        self.action_space = spaces.Box(low = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0]), high = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1]), dtype = np.float64)
         self.opponent_id = 0
         self.player_id = 1
 
@@ -110,34 +111,37 @@ class TennisEnv(gym.Env):
 
         action: Action vector coming from player 1 
         """
-        reward = 1
-        debug = False
+        reward = 0
         done = False
         truncated = False
         # Convert action to a hit type
-        hit_type = HIT_TYPES[np.argmax(action[2:])]
+        hit_type = HIT_TYPES[np.argmax(action[1:])]
         # ======== Determine player_positions ======== #
         player_positions = self.last_state.player_positions
-        player_movement = action[0:2]
-        if debug:
-            player_movement = [8.40567547,0.9273905]
+        ball_displacement = action[0]*(33-2)+2
 
         if hit_type == "forehand_serve":
             lookup_hit_type = check_forehand_serve(player_positions[self.player_id][0])
         else:
             lookup_hit_type = hit_type
 
+        # Apply the displacement, and flip the coordinate
+        theta = np.deg2rad(self.last_state.ball_direction)
+        displacement = ball_displacement * np.array([np.cos(theta), np.sin(theta)])
+        move_position = COURT_BBOX - (self.last_state.ball_position + displacement)
+
         # Stochastic outcome of player_movement
         player_movement = np.random.normal(
-            loc=player_movement,
+            loc=move_position,
             # Assign a larger std if the targeted position is far away
             # from the current position
             scale=np.abs(
-                player_movement - player_positions[self.player_id]
+                move_position - player_positions[self.player_id]
             ) / 10,
         )
 
         player_positions[self.player_id] = [min(max(-2, player_movement[0]), 14), min(max(-3, player_movement[1]), POS_NET)]
+
         # ======== Determine ball_position ======== #
         hitter_hit_type = self.last_state.hitter_hit_type
         ball_position = self.last_state.ball_position
@@ -151,7 +155,7 @@ class TennisEnv(gym.Env):
         theta = np.deg2rad(ball_direction)
         displacement = distance * np.array([np.cos(theta), np.sin(theta)])
         ball_position = COURT_BBOX - (ball_position + displacement)
-
+        #print(f"Ball position: {ball_position}")
         # ======== Determine ball_direction ======== #
         dir_change = np.random.normal(
             *self.players[self.player_id].dir_change_lookup_table[lookup_hit_type]
@@ -173,10 +177,6 @@ class TennisEnv(gym.Env):
         # Check if the returning hit is successful
         player_hit_success = check_hit_success(player_position=player_positions[self.player_id], ball_position=ball_position
         )
-        #print(f"Player hit success: {player_hit_success}")
-        #print(f"Player hit type: {hit_type}")
-        #print(f"Player hit position: {player_positions[self.player_id]}")
-        #print(f"Ball position: {ball_position}")
 
         next_state = State(
             player_positions=player_positions,
@@ -246,10 +246,6 @@ class TennisEnv(gym.Env):
         # Check if the returning hit is successful
         opponent_hit_success = check_hit_success(player_position=player_positions[self.opponent_id], ball_position=player_ball_position
         )
-        #print(f"Opponent hit success: {opponent_hit_success}")
-        #print(f"Opponent hit type: {opponent_hit_type}")
-        #print(f"Opponent hit position: {player_positions[self.opponent_id]}")
-        #print(f"Ball position: {player_ball_position}")
 
         player_next_state = State(
             player_positions=player_positions,
