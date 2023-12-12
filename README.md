@@ -1,5 +1,7 @@
 # aa228-final-project
 
+The main branch contains code for discrete space simulation and learning. The code for continuous space simulation and learning is in branch `continuous_space`.
+
 ### Action Chooser
 The current strategy for choosing an action is designed in `players/action_chooser.py`. It uses a k-NN that includes the information on `'hitter_area', "receiver_area", 'opponent_hit_type'` to predict `player_hit_type`.
 
